@@ -350,9 +350,13 @@ class _EquipmentListScreenState extends ConsumerState<EquipmentListScreen> {
                             builder: (_) =>
                                 CreateControlUnitScreen(existingData: result)));
                       }
-                    } else {
+                    } else if (choice == 'add') {
+                      // Only navigate when user explicitly chose Add.
                       await Navigator.of(context)
                           .pushNamed('/create_control_unit');
+                    } else {
+                      // choice == null -> user dismissed with back or tap outside.
+                      // Do nothing.
                     }
                   } else if (routeCategory.toLowerCase() == 'tractor') {
                     await Navigator.of(context).pushNamed('/create_tractor');

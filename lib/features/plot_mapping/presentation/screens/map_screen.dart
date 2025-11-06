@@ -243,47 +243,56 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       final suggested = _computeAreaHa(points);
       if (suggested > 0) areaCtrl.text = suggested.toStringAsFixed(2);
     } catch (_) {}
-    final res = await showModalBottomSheet<bool>(
-      context: context,
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          TextField(
-              controller: nameCtrl,
-              decoration: const InputDecoration(labelText: 'Plot Name')),
-          TextField(
-              controller: zipCtrl,
-              decoration: const InputDecoration(labelText: 'Pin / Zip Code')),
-          TextField(
-              controller: bedHeightCtrl,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(labelText: 'Bed Height (m)')),
-          TextField(
-              controller: areaCtrl,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(labelText: 'Approx Area (ha)')),
-          TextField(
-              controller: rowSpacingCtrl,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(labelText: 'Row Spacing (m)')),
-          TextField(
-              controller: obstaclesCtrl,
-              decoration:
-                  const InputDecoration(labelText: 'Obstacles (notes)')),
-          TextField(
-              controller: treeCountCtrl,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Total Trees')),
-          const SizedBox(height: 12),
-          ElevatedButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Save'))
-        ]),
-      ),
-    );
+  final res = await showModalBottomSheet<bool>(
+    context: context,
+    isScrollControlled: true,
+    builder: (ctx) => Padding(
+    // ensure the bottom sheet moves above the keyboard
+    padding: EdgeInsets.only(
+      left: 12.0,
+      right: 12.0,
+      top: 12.0,
+      bottom: MediaQuery.of(ctx).viewInsets.bottom + 12.0,
+    ),
+    child: SingleChildScrollView(
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+      TextField(
+        controller: nameCtrl,
+        decoration: const InputDecoration(labelText: 'Plot Name')),
+      TextField(
+        controller: zipCtrl,
+        decoration: const InputDecoration(labelText: 'Pin / Zip Code')),
+      TextField(
+        controller: bedHeightCtrl,
+        keyboardType:
+          const TextInputType.numberWithOptions(decimal: true),
+        decoration: const InputDecoration(labelText: 'Bed Height (m)')),
+      TextField(
+        controller: areaCtrl,
+        keyboardType:
+          const TextInputType.numberWithOptions(decimal: true),
+        decoration: const InputDecoration(labelText: 'Approx Area (ha)')),
+      TextField(
+        controller: rowSpacingCtrl,
+        keyboardType:
+          const TextInputType.numberWithOptions(decimal: true),
+        decoration: const InputDecoration(labelText: 'Row Spacing (m)')),
+      TextField(
+        controller: obstaclesCtrl,
+        decoration:
+          const InputDecoration(labelText: 'Obstacles (notes)')),
+      TextField(
+        controller: treeCountCtrl,
+        keyboardType: TextInputType.number,
+        decoration: const InputDecoration(labelText: 'Total Trees')),
+      const SizedBox(height: 12),
+      ElevatedButton(
+        onPressed: () => Navigator.of(ctx).pop(true),
+        child: const Text('Save'))
+      ]),
+    ),
+    ),
+  );
     if (res == true) {
       final owner = ref.read(authServiceProvider).currentUserId;
       double? approx;
