@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:simdaas/core/services/auth_service.dart';
+import 'package:simdaas/core/utils/error_utils.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -16,6 +17,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _password = TextEditingController();
   final _confirm = TextEditingController();
   bool _loading = false;
+  bool _obscurePassword = true;
+  bool _obscureConfirm = true;
 
   @override
   void dispose() {
@@ -52,19 +55,39 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               const SizedBox(height: 8),
               TextFormField(
                 controller: _password,
-                decoration: const InputDecoration(labelText: 'Password'),
-                obscureText: true,
-                validator: (v) =>
-                    (v == null || v.isEmpty) ? 'Password required' : null,
+                decoration: InputDecoration(
+                  labelText: 'Password',
+                  helperText: 'Minimum 6 characters',
+                  suffixIcon: IconButton(
+                    icon: Icon(_obscurePassword ? Icons.visibility : Icons.visibility_off),
+                    onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                  ),
+                ),
+                obscureText: _obscurePassword,
+                validator: (v) {
+                  if (v == null || v.isEmpty) return 'Password required';
+                  if (v.trim().length < 6)
+                    return 'Password must be at least 6 characters';
+                  return null;
+                },
               ),
               const SizedBox(height: 8),
               TextFormField(
                 controller: _confirm,
-                decoration:
-                    const InputDecoration(labelText: 'Confirm password'),
-                obscureText: true,
-                validator: (v) =>
-                    (v == null || v.isEmpty) ? 'Confirm password' : null,
+                decoration: InputDecoration(
+                    labelText: 'Confirm password',
+                    suffixIcon: IconButton(
+                      icon: Icon(_obscureConfirm ? Icons.visibility : Icons.visibility_off),
+                      onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
+                    )),
+                obscureText: _obscureConfirm,
+                validator: (v) {
+                  if (v == null || v.isEmpty) return 'Confirm password';
+                  if (v.trim().length < 6)
+                    return 'Password must be at least 6 characters';
+                  if (v != _password.text) return 'Passwords do not match';
+                  return null;
+                },
               ),
               const SizedBox(height: 16),
               _loading
@@ -80,23 +103,22 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         }
                         setState(() => _loading = true);
                         final svc = ref.read(authServiceProvider);
-                        final ok = await svc.register(
-                            _username.text.trim(),
-                            _email.text.trim(),
-                            _password.text.trim(),
-                            _confirm.text.trim());
-                        setState(() => _loading = false);
-                        if (ok) {
-                          // navigate to verification screen
+                        try {
+                          await svc.register(
+                              _username.text.trim(),
+                              _email.text.trim(),
+                              _password.text.trim(),
+                              _confirm.text.trim());
+                          setState(() => _loading = false);
                           if (mounted) {
                             Navigator.of(context).pushReplacementNamed(
                                 '/verify-email',
                                 arguments: _email.text.trim());
                           }
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content: Text('Registration failed')));
+                        } catch (e) {
+                          setState(() => _loading = false);
+                          showPolishedError(context, e,
+                              fallback: 'Registration failed');
                         }
                       },
                       child: const Padding(

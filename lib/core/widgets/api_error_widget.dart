@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:simdaas/core/utils/error_utils.dart';
 
 class ApiErrorWidget extends StatelessWidget {
   const ApiErrorWidget({super.key, required this.error, this.onRetry});
@@ -8,7 +9,7 @@ class ApiErrorWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final msg = error is Exception ? error.toString() : '$error';
+    final msg = extractErrorMessage(error);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(16.0),

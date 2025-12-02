@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:simdaas/core/services/auth_service.dart';
+import 'package:simdaas/core/utils/error_utils.dart';
 import 'package:latlong2/latlong.dart';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
@@ -177,7 +178,7 @@ class PlotListScreen extends ConsumerWidget {
                 color: Theme.of(context).colorScheme.error,
               ),
               const SizedBox(height: 16),
-              Text('Error: $e'),
+              Text(extractErrorMessage(e)),
             ],
           ),
         ),

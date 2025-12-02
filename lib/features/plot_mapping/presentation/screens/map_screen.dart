@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:simdaas/core/utils/error_utils.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'dart:math' as math;
 import 'package:http/http.dart' as http;
@@ -9,10 +10,22 @@ import '../providers/plot_providers.dart';
 import '../providers/map_state_providers.dart';
 import '../../data/models/plot_model.dart';
 import 'package:simdaas/core/services/auth_service.dart';
+import 'package:simdaas/core/services/location_service.dart';
 
 class MapScreen extends ConsumerStatefulWidget {
   final LatLng? initialCenter;
-  const MapScreen({super.key, this.initialCenter});
+  // Minimum and maximum allowed zoom levels for the map. These can be
+  // configured when creating the MapScreen. Defaults chosen to allow
+  // close-up editing while preventing excessive zoom-out.
+  final double minZoom;
+  final double maxZoom;
+
+  const MapScreen({
+    super.key,
+    this.initialCenter,
+    this.minZoom = 2.0,
+    this.maxZoom = 22.0,
+  });
 
   @override
   ConsumerState<MapScreen> createState() => _MapScreenState();
@@ -56,6 +69,23 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   void _onTapTap(TapPosition tapPos, LatLng latlng) {
     final mapNotifier = ref.read(mapStateProvider.notifier);
     final currentPoints = ref.read(mapStateProvider).points;
+
+    // If the tap is very close to an existing vertex, select that vertex
+    // instead of inserting a new point on top of it.
+    if (currentPoints.isNotEmpty) {
+      try {
+        final nearestIdx = _findNearestIndex(latlng, currentPoints);
+        if (nearestIdx != null) {
+          final d =
+              const Distance().distance(latlng, currentPoints[nearestIdx]);
+          // threshold in meters (6m)
+          if (d <= 6.0) {
+            mapNotifier.selectVertex(nearestIdx);
+            return;
+          }
+        }
+      } catch (_) {}
+    }
 
     // try to insert on nearest segment if close
     final idx = _nearestSegmentIndex(latlng, currentPoints);
@@ -129,6 +159,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   @override
   void initState() {
     super.initState();
+    // Clear any previous polygon state so each new map session starts fresh
+    try {
+      ref.read(mapStateProvider.notifier).clearAll();
+    } catch (_) {}
     // move the map after first frame if an initial center was provided
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final c = widget.initialCenter;
@@ -137,7 +171,24 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       }
     });
 
+    // If no initial center was passed, try to move to device's current location
+    if (widget.initialCenter == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        try {
+          final loc = await LocationService().getCurrentLocation();
+          // ignore invalid fallback (0,0)
+          if (loc.latitude != 0 || loc.longitude != 0) {
+            _mapController.move(loc, 18.0);
+          }
+        } catch (_) {}
+      });
+    }
+
     // listen to search text changes for autocomplete
+    // show help dialog after first frame so user sees guidance when opening map
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) showHelpDialog();
+    });
     _searchCtrl.addListener(_onSearchChanged);
   }
 
@@ -191,6 +242,79 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     }
   }
 
+  void showHelpDialog() {
+    showDialog<void>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.help_outline, color: Colors.blue),
+            SizedBox(width: 8),
+            Text('How to map a field'),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 4),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Text('1. ', style: TextStyle(fontWeight: FontWeight.bold)),
+                  Expanded(
+                      child: Text(
+                          'Search your location or click on the dot button for your current location')),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Text('2. ', style: TextStyle(fontWeight: FontWeight.bold)),
+                  Expanded(child: Text('Map the field of operation')),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('3. ',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.save, size: 20),
+                  const SizedBox(width: 8),
+                  const Expanded(child: Text('Click save button')),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Text('4. ', style: TextStyle(fontWeight: FontWeight.bold)),
+                  Expanded(child: Text('Add data.')),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Text('5. ', style: TextStyle(fontWeight: FontWeight.bold)),
+                  Expanded(child: Text('Click save')),
+                ],
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(c).pop(), child: const Text('OK')),
+        ],
+      ),
+    );
+  }
+
   void _navigateToLocation(String text) async {
     if (text.isEmpty) return;
     LatLng? center;
@@ -238,79 +362,228 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final rowSpacingCtrl = TextEditingController();
     final obstaclesCtrl = TextEditingController();
     final treeCountCtrl = TextEditingController();
+    final _formKey = GlobalKey<FormState>();
+
+    // Focus nodes to allow moving to next field on keyboard 'Next' action
+    final nameFocus = FocusNode();
+    final zipFocus = FocusNode();
+    final bedHeightFocus = FocusNode();
+    final areaFocus = FocusNode();
+    final rowSpacingFocus = FocusNode();
+    final obstaclesFocus = FocusNode();
+    final treeCountFocus = FocusNode();
     // prefill area suggestion
     try {
       final suggested = _computeAreaHa(points);
-      if (suggested > 0) areaCtrl.text = suggested.toStringAsFixed(2);
+      if (suggested > 0) {
+        areaCtrl.text = suggested.toStringAsFixed(2);
+      }
     } catch (_) {}
-  final res = await showModalBottomSheet<bool>(
-    context: context,
-    isScrollControlled: true,
-    builder: (ctx) => Padding(
-    // ensure the bottom sheet moves above the keyboard
-    padding: EdgeInsets.only(
-      left: 12.0,
-      right: 12.0,
-      top: 12.0,
-      bottom: MediaQuery.of(ctx).viewInsets.bottom + 12.0,
-    ),
-    child: SingleChildScrollView(
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-      TextField(
-        controller: nameCtrl,
-        decoration: const InputDecoration(labelText: 'Plot Name')),
-      TextField(
-        controller: zipCtrl,
-        decoration: const InputDecoration(labelText: 'Pin / Zip Code')),
-      TextField(
-        controller: bedHeightCtrl,
-        keyboardType:
-          const TextInputType.numberWithOptions(decimal: true),
-        decoration: const InputDecoration(labelText: 'Bed Height (m)')),
-      TextField(
-        controller: areaCtrl,
-        keyboardType:
-          const TextInputType.numberWithOptions(decimal: true),
-        decoration: const InputDecoration(labelText: 'Approx Area (ha)')),
-      TextField(
-        controller: rowSpacingCtrl,
-        keyboardType:
-          const TextInputType.numberWithOptions(decimal: true),
-        decoration: const InputDecoration(labelText: 'Row Spacing (m)')),
-      TextField(
-        controller: obstaclesCtrl,
-        decoration:
-          const InputDecoration(labelText: 'Obstacles (notes)')),
-      TextField(
-        controller: treeCountCtrl,
-        keyboardType: TextInputType.number,
-        decoration: const InputDecoration(labelText: 'Total Trees')),
-      const SizedBox(height: 12),
-      ElevatedButton(
-        onPressed: () => Navigator.of(ctx).pop(true),
-        child: const Text('Save'))
-      ]),
-    ),
-    ),
-  );
-    if (res == true) {
+    final resMap = await showModalBottomSheet<Map<String, String>?>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+      ),
+      builder: (ctx) {
+        final insets = MediaQuery.of(ctx).viewInsets.bottom;
+        final maxHeight = MediaQuery.of(ctx).size.height * 0.9;
+        return AnimatedPadding(
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOut,
+          padding: EdgeInsets.only(bottom: insets),
+          child: FractionallySizedBox(
+            heightFactor: 0.75,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: maxHeight),
+              child: Material(
+                color: Theme.of(context).scaffoldBackgroundColor,
+                elevation: 8,
+                shape: const RoundedRectangleBorder(
+                    borderRadius:
+                        BorderRadius.vertical(top: Radius.circular(12))),
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12.0, vertical: 12.0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // small drag handle
+                        Center(
+                          child: Container(
+                            width: 36,
+                            height: 4,
+                            margin: const EdgeInsets.only(bottom: 8),
+                            decoration: BoxDecoration(
+                                color: Colors.grey[400],
+                                borderRadius: BorderRadius.circular(4)),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Form(
+                          key: _formKey,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              TextFormField(
+                                controller: nameCtrl,
+                                focusNode: nameFocus,
+                                textInputAction: TextInputAction.next,
+                                onFieldSubmitted: (_) =>
+                                    FocusScope.of(ctx).requestFocus(zipFocus),
+                                decoration: const InputDecoration(
+                                    labelText: 'Plot Name'),
+                                validator: (v) => (v == null || v.isEmpty)
+                                    ? 'Enter plot name'
+                                    : null,
+                              ),
+                              const SizedBox(height: 8),
+                              TextFormField(
+                                controller: zipCtrl,
+                                focusNode: zipFocus,
+                                textInputAction: TextInputAction.next,
+                                onFieldSubmitted: (_) => FocusScope.of(ctx)
+                                    .requestFocus(bedHeightFocus),
+                                decoration: const InputDecoration(
+                                    labelText: 'Pin / Zip Code'),
+                                validator: (v) => (v == null || v.isEmpty)
+                                    ? 'Enter pin/zip'
+                                    : null,
+                              ),
+                              const SizedBox(height: 8),
+                              TextFormField(
+                                controller: bedHeightCtrl,
+                                focusNode: bedHeightFocus,
+                                textInputAction: TextInputAction.next,
+                                onFieldSubmitted: (_) =>
+                                    FocusScope.of(ctx).requestFocus(areaFocus),
+                                keyboardType:
+                                    const TextInputType.numberWithOptions(
+                                        decimal: true),
+                                decoration: const InputDecoration(
+                                    labelText: 'Bed Height (m)'),
+                                validator: (v) => (v == null || v.isEmpty)
+                                    ? 'Enter bed height'
+                                    : null,
+                              ),
+                              const SizedBox(height: 8),
+                              TextFormField(
+                                controller: areaCtrl,
+                                focusNode: areaFocus,
+                                textInputAction: TextInputAction.next,
+                                onFieldSubmitted: (_) => FocusScope.of(ctx)
+                                    .requestFocus(rowSpacingFocus),
+                                keyboardType:
+                                    const TextInputType.numberWithOptions(
+                                        decimal: true),
+                                decoration: const InputDecoration(
+                                    labelText: 'Approx Area (ha)'),
+                                validator: (v) => (v == null || v.isEmpty)
+                                    ? 'Enter area'
+                                    : null,
+                              ),
+                              const SizedBox(height: 8),
+                              TextFormField(
+                                controller: rowSpacingCtrl,
+                                focusNode: rowSpacingFocus,
+                                textInputAction: TextInputAction.next,
+                                onFieldSubmitted: (_) => FocusScope.of(ctx)
+                                    .requestFocus(obstaclesFocus),
+                                keyboardType:
+                                    const TextInputType.numberWithOptions(
+                                        decimal: true),
+                                decoration: const InputDecoration(
+                                    labelText: 'Row Spacing (m)'),
+                                validator: (v) => (v == null || v.isEmpty)
+                                    ? 'Enter row spacing'
+                                    : null,
+                              ),
+                              const SizedBox(height: 8),
+                              TextFormField(
+                                controller: obstaclesCtrl,
+                                focusNode: obstaclesFocus,
+                                textInputAction: TextInputAction.next,
+                                onFieldSubmitted: (_) => FocusScope.of(ctx)
+                                    .requestFocus(treeCountFocus),
+                                decoration: const InputDecoration(
+                                    labelText: 'Obstacles (notes)'),
+                                validator: (v) => (v == null || v.isEmpty)
+                                    ? 'Enter obstacles (or -)'
+                                    : null,
+                              ),
+                              const SizedBox(height: 8),
+                              TextFormField(
+                                controller: treeCountCtrl,
+                                focusNode: treeCountFocus,
+                                textInputAction: TextInputAction.done,
+                                onFieldSubmitted: (_) =>
+                                    FocusScope.of(ctx).unfocus(),
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(
+                                    labelText: 'Total Trees'),
+                                validator: (v) => (v == null || v.isEmpty)
+                                    ? 'Enter total trees'
+                                    : null,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: () {
+                            if (!_formKey.currentState!.validate()) return;
+                            // collect form values and return them to the caller
+                            final result = <String, String>{
+                              'name': nameCtrl.text,
+                              'zip': zipCtrl.text,
+                              'bedHeight': bedHeightCtrl.text,
+                              'area': areaCtrl.text,
+                              'rowSpacing': rowSpacingCtrl.text,
+                              'obstacles': obstaclesCtrl.text,
+                              'treeCount': treeCountCtrl.text,
+                            };
+                            Navigator.of(ctx).pop(result);
+                          },
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 12.0),
+                            child: Text('Save'),
+                          ),
+                        ),
+                        // extra bottom spacing so last field stays visible when keyboard is open
+                        SizedBox(height: insets),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    if (resMap != null) {
       final owner = ref.read(authServiceProvider).currentUserId;
       double? approx;
       try {
-        approx = double.parse(areaCtrl.text);
+        approx = double.parse((resMap['area'] ?? '').toString());
       } catch (_) {
         approx = null;
       }
       double? rowSpacing;
       try {
-        rowSpacing = double.parse(rowSpacingCtrl.text);
+        rowSpacing = double.parse((resMap['rowSpacing'] ?? '').toString());
       } catch (_) {
         rowSpacing = null;
       }
       // note: obstacles input is collected but not stored in the canonical PlotModel
       int? treeCount;
       try {
-        treeCount = int.parse(treeCountCtrl.text);
+        treeCount = int.parse(resMap['treeCount'] ?? '');
       } catch (_) {
         treeCount = null;
       }
@@ -321,10 +594,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       // map legacy form fields into the new PlotModel fields
       final model = PlotModel(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
-          name: nameCtrl.text,
+          name: resMap['name'] ?? '',
           bedHeight: (bedHeightCtrl.text.isEmpty)
               ? null
-              : double.tryParse(bedHeightCtrl.text),
+              : double.tryParse(resMap['bedHeight'] ?? ''),
           area: approx,
           rowSpacing: rowSpacing,
           treeCount: treeCount,
@@ -337,7 +610,50 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       final currentUserId =
           ref.read(authServiceProvider).currentUserId ?? 'demo_user';
       ref.invalidate(plotsListProvider(currentUserId));
-      Navigator.of(context).pop(true);
+      // Close the map screen (caller) after the bottom sheet and repo work
+      // have settled to avoid Navigator locked assertions. Schedule the pop
+      // to run after the current frame.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        Navigator.of(context).pop(true);
+      });
+    }
+  }
+
+  Future<void> _centerOnCurrentLocation() async {
+    try {
+      final loc = await LocationService().getCurrentLocation();
+      // Keep a sensible zoom level when centering on device
+      const double zoom = 18.0;
+      _mapController.move(loc, zoom);
+    } catch (e) {
+      if (mounted) {
+        showPolishedError(context, e, fallback: 'Location error');
+      }
+    }
+  }
+
+  void _zoomIn() {
+    try {
+      final cam = _mapController.camera;
+      final center = cam.center;
+      final curZoom = cam.zoom;
+      final newZoom = (curZoom + 1).clamp(widget.minZoom, widget.maxZoom);
+      _mapController.move(center, newZoom);
+    } catch (_) {
+      // ignore - camera not ready or unsupported operation
+    }
+  }
+
+  void _zoomOut() {
+    try {
+      final cam = _mapController.camera;
+      final center = cam.center;
+      final curZoom = cam.zoom;
+      final newZoom = (curZoom - 1).clamp(widget.minZoom, widget.maxZoom);
+      _mapController.move(center, newZoom);
+    } catch (_) {
+      // ignore - camera not ready or unsupported operation
     }
   }
 
@@ -352,7 +668,55 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final isSearching = searchState.isSearching;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Map Plot')),
+      appBar: AppBar(
+        title: const Text('Map Plot'),
+        actions: [
+          IconButton(
+            tooltip: 'Clear all vertices',
+            icon: const Icon(Icons.delete_sweep),
+            onPressed: () async {
+              final pts = ref.read(mapStateProvider).points;
+              if (pts.isEmpty) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('No vertices to clear')));
+                }
+                return;
+              }
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (c) => AlertDialog(
+                  title: const Text('Clear all vertices?'),
+                  content: const Text(
+                      'This will remove all vertices from the current polygon.'),
+                  actions: [
+                    TextButton(
+                        onPressed: () => Navigator.of(c).pop(false),
+                        child: const Text('Cancel')),
+                    TextButton(
+                        onPressed: () => Navigator.of(c).pop(true),
+                        child: const Text('Clear')),
+                  ],
+                ),
+              );
+              if (confirm == true) {
+                ref.read(mapStateProvider.notifier).clearAll();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Cleared all vertices')));
+                }
+              }
+            },
+          ),
+          // Help button to guide user through mapping flow
+          IconButton(
+            tooltip: 'How to map a field',
+            icon: const Icon(Icons.help_outline),
+            onPressed: showHelpDialog,
+          ),
+          // removed AppBar location button — replaced with FAB
+        ],
+      ),
       body: Stack(
         children: [
           FlutterMap(
@@ -360,6 +724,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             options: MapOptions(
               onTap: _onTapTap,
               initialZoom: 18.0,
+              minZoom: widget.minZoom,
+              maxZoom: widget.maxZoom,
               // Disable map interactions when dragging a vertex
               interactionOptions: InteractionOptions(
                 flags: absorbMap ? InteractiveFlag.none : InteractiveFlag.all,
@@ -597,12 +963,41 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             )
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _saveField,
-        child: const Icon(Icons.save),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FloatingActionButton(
+            heroTag: 'save_plot',
+            onPressed: _saveField,
+            child: const Icon(Icons.save),
+          ),
+          const SizedBox(height: 12),
+          FloatingActionButton(
+            heroTag: 'zoom_in',
+            onPressed: _zoomIn,
+            mini: true,
+            child: const Icon(Icons.add),
+          ),
+          const SizedBox(height: 8),
+          FloatingActionButton(
+            heroTag: 'zoom_out',
+            onPressed: _zoomOut,
+            mini: true,
+            child: const Icon(Icons.remove),
+          ),
+          const SizedBox(height: 12),
+          FloatingActionButton(
+            heroTag: 'locate_device',
+            onPressed: _centerOnCurrentLocation,
+            child: const Icon(Icons.my_location),
+          ),
+        ],
       ),
     );
   }
+
+  // NOTE: _showHelpDialog was removed in favor of `showHelpDialog` defined
+  // earlier in this file to avoid duplicate implementations.
 
   // Normalize polygon vertices by sorting points by angle around centroid.
   List<LatLng> _normalizePolygon(List<LatLng> pts) {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:simdaas/core/utils/error_utils.dart';
 import '../providers/auth_providers.dart';
 
 class LoginForm extends ConsumerStatefulWidget {
@@ -14,6 +15,7 @@ class _LoginFormState extends ConsumerState<LoginForm> {
   final _passCtrl = TextEditingController();
   // rename: username field
   final _usernameCtrl = TextEditingController();
+  bool _obscurePassword = true;
 
   @override
   void dispose() {
@@ -60,16 +62,29 @@ class _LoginFormState extends ConsumerState<LoginForm> {
           const SizedBox(height: 16),
           TextFormField(
             controller: _passCtrl,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'Password',
-              prefixIcon: Icon(Icons.lock_outline),
+              prefixIcon: const Icon(Icons.lock_outline),
               hintText: 'Enter your password',
+              suffixIcon: IconButton(
+                icon: Icon(_obscurePassword ? Icons.visibility : Icons.visibility_off),
+                onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+              ),
             ),
-            obscureText: true,
+            obscureText: _obscurePassword,
             validator: (v) =>
                 (v == null || v.isEmpty) ? 'Please enter your password' : null,
           ),
           const SizedBox(height: 24),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () {
+                Navigator.of(context).pushNamed('/forgot-password');
+              },
+              child: const Text('Forgot password?'),
+            ),
+          ),
           authAsync is AsyncLoading
               ? const Center(
                   child: Padding(
@@ -93,27 +108,27 @@ class _LoginFormState extends ConsumerState<LoginForm> {
                       }
                     } else if (state is AsyncError) {
                       // navigate to plot list
-                      final err = state.error?.toString() ?? 'Unknown error';
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Row(
-                              children: [
-                                const Icon(Icons.error_outline,
-                                    color: Colors.white),
-                                const SizedBox(width: 12),
-                                Expanded(child: Text('Login failed: $err')),
-                              ],
+                      final msg = extractErrorMessage(state.error);
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Row(
+                                children: [
+                                  const Icon(Icons.error_outline,
+                                      color: Colors.white),
+                                  const SizedBox(width: 12),
+                                  Expanded(child: Text('Login failed: $msg')),
+                                ],
+                              ),
+                              backgroundColor:
+                                  Theme.of(context).colorScheme.error,
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
                             ),
-                            backgroundColor:
-                                Theme.of(context).colorScheme.error,
-                            behavior: SnackBarBehavior.floating,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                        );
-                      }
+                          );
+                        }
                     }
                   },
                   child: const Padding(

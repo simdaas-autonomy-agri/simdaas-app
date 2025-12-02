@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:simdaas/core/services/api_service.dart';
+import 'package:simdaas/core/services/api_exception.dart';
 import '../models/user_model.dart';
 
 abstract class AuthRemoteDataSource {
@@ -38,7 +39,8 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       }
       return UserModel(id: id, email: email);
     }
-    throw Exception('Login failed: ${resp.statusCode} ${resp.body}');
+    throw ApiException(resp.statusCode, 'HTTP ${resp.statusCode}',
+      path: '/api/auth/login/', body: resp.body);
   }
 
   @override

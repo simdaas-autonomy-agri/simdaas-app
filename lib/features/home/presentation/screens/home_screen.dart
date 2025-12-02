@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:simdaas/core/utils/error_utils.dart';
 import 'package:simdaas/core/services/auth_service.dart';
 import '../../../job_planner/presentation/providers/job_providers.dart';
 import '../../../data_monitoring/presentation/screens/monitoring_screen.dart';
@@ -80,7 +81,7 @@ class AdminDashboardScreen extends ConsumerWidget {
                       loading: () =>
                           const Center(child: CircularProgressIndicator()),
                       error: (e, st) =>
-                          Center(child: Text('Error loading jobs: $e')),
+                          Center(child: Text(extractErrorMessage(e))),
                     ),
           ),
           const SizedBox(height: 12),

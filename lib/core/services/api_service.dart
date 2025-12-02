@@ -12,6 +12,10 @@ class ApiService {
   // Callback to refresh token when 401 occurs
   Future<String?> Function()? onTokenExpired;
 
+  /// Optional callback to check if token is expired BEFORE request.
+  /// Should return true if token is expired and a refresh is needed.
+  Future<bool> Function()? isTokenExpired;
+
   /// Expose current auth token for debugging (do not use in production UI).
   String? get authToken => _authToken;
 
@@ -27,13 +31,26 @@ class ApiService {
   Future<http.Response> get(String path,
       {Map<String, String>? headers, bool requiresAuth = true}) async {
     try {
+      // If caller requires auth, allow pre-request expiry check/refresh
+      if (requiresAuth && isTokenExpired != null) {
+        try {
+          final expired = await isTokenExpired!();
+          if (expired && onTokenExpired != null) {
+            final newToken = await onTokenExpired!();
+            if (newToken != null) {
+              // ensure ApiService has the refreshed token for subsequent requests
+              setAuthToken(newToken);
+            }
+          }
+        } catch (_) {}
+      }
       final c = client ?? http.Client();
       final h = requiresAuth ? _withAuth(headers) : (headers ?? {});
       debugPrint(
           'ApiService.GET $path with auth: ${h.containsKey('Authorization')}');
       final resp = await c.get(url(path), headers: h);
-      print('Response status: ${resp.statusCode}');
-      print('Response body: ${resp.body}');
+      // print('Response status: ${resp.statusCode}');
+      // print('Response body: ${resp.body}');
 
       // If 401 and we have a refresh callback, try to refresh and retry
       // Only attempt refresh if this request requires auth
@@ -43,6 +60,8 @@ class ApiService {
         final newToken = await onTokenExpired!();
         if (newToken != null) {
           debugPrint('ApiService.GET $path: Token refreshed, retrying request');
+          // ensure local auth token is updated
+          setAuthToken(newToken);
           final h2 = _withAuth(headers);
           final resp2 = await c.get(url(path), headers: h2);
           _ensureSuccess(resp2, path);
@@ -65,6 +84,18 @@ class ApiService {
       Object? body,
       bool requiresAuth = true}) async {
     try {
+      if (requiresAuth && isTokenExpired != null) {
+        try {
+          final expired = await isTokenExpired!();
+          if (expired && onTokenExpired != null) {
+            final newToken = await onTokenExpired!();
+            if (newToken != null) {
+              // ensure ApiService has the refreshed token for subsequent requests
+              setAuthToken(newToken);
+            }
+          }
+        } catch (_) {}
+      }
       final c = client ?? http.Client();
       final h = requiresAuth ? _withAuth(headers) : (headers ?? {});
       debugPrint(
@@ -78,9 +109,10 @@ class ApiService {
             'ApiService.POST $path: Got 401, attempting token refresh...');
         final newToken = await onTokenExpired!();
         if (newToken != null) {
-          debugPrint(
-              'ApiService.POST $path: Token refreshed, retrying request');
-          final h2 = _withAuth(headers);
+            debugPrint(
+                'ApiService.POST $path: Token refreshed, retrying request');
+            setAuthToken(newToken);
+            final h2 = _withAuth(headers);
           final resp2 = await c.post(url(path), headers: h2, body: body);
           _ensureSuccess(resp2, path);
           return resp2;
@@ -104,6 +136,55 @@ class ApiService {
       _ensureSuccess(resp, path);
       return resp;
     } catch (e) {
+      throw ApiException(null, 'Network error: $e', path: path);
+    }
+  }
+
+  /// Send a PATCH request. Supports automatic token refresh similar to [post]/[get].
+  Future<http.Response> patch(String path,
+      {Map<String, String>? headers,
+      Object? body,
+      bool requiresAuth = true}) async {
+    try {
+      if (requiresAuth && isTokenExpired != null) {
+        try {
+          final expired = await isTokenExpired!();
+          if (expired && onTokenExpired != null) {
+            final newToken = await onTokenExpired!();
+            if (newToken != null) {
+              setAuthToken(newToken);
+            }
+          }
+        } catch (_) {}
+      }
+      final c = client ?? http.Client();
+      final h = requiresAuth ? _withAuth(headers) : (headers ?? {});
+      debugPrint(
+          'ApiService.PATCH $path with auth: ${h.containsKey('Authorization')}');
+      final resp = await c.patch(url(path), headers: h, body: body);
+
+      print('PATCH Response status: ${resp.statusCode}');
+      print('PATCH Response body: ${resp.body}');
+
+      if (resp.statusCode == 401 && requiresAuth && onTokenExpired != null) {
+        debugPrint(
+            'ApiService.PATCH $path: Got 401, attempting token refresh...');
+        final newToken = await onTokenExpired!();
+        if (newToken != null) {
+            debugPrint(
+                'ApiService.PATCH $path: Token refreshed, retrying request');
+            setAuthToken(newToken);
+            final h2 = _withAuth(headers);
+          final resp2 = await c.patch(url(path), headers: h2, body: body);
+          _ensureSuccess(resp2, path);
+          return resp2;
+        }
+      }
+
+      _ensureSuccess(resp, path);
+      return resp;
+    } catch (e) {
+      debugPrint('ApiService.PATCH $path error: $e');
       throw ApiException(null, 'Network error: $e', path: path);
     }
   }

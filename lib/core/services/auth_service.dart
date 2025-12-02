@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -26,6 +27,10 @@ final authServiceProvider = ChangeNotifierProvider<AuthService>((ref) {
     await svc.handleRefreshFailure();
     return null;
   };
+  // Register expiry checker so ApiService can proactively refresh before requests
+  _apiServiceInstance.isTokenExpired = () async {
+    return await svc.isAccessTokenExpired();
+  };
   // attempt to load persisted tokens
   svc._loadFromStorage();
   return svc;
@@ -39,11 +44,17 @@ class AuthService extends ChangeNotifier {
 
   String? _token;
   String? _refreshToken;
+  Map<String, dynamic>? _userData;
   String? _userId;
   bool _isRefreshing = false;
+  Completer<void>? _refreshCompleter;
+  bool _initialized = false;
+  Timer? _refreshTimer;
 
   String? get token => _token;
   String? get currentUserId => _userId;
+  Map<String, dynamic>? get currentUserMap => _userData;
+  bool get isInitialized => _initialized;
 
   Future<bool> signIn(String username, String password) async {
     // Postman collection: POST {{baseUrl}}/api/auth/login/ -> returns { access, refresh }
@@ -73,8 +84,26 @@ class AuthService extends ChangeNotifier {
       } catch (e) {
         debugPrint('AuthService: failed writing tokens to storage: $e');
       }
+      // persist user object if server returned it (convenience for profile UI)
+      try {
+        if (data.containsKey('user') && data['user'] is Map<String, dynamic>) {
+          _userData = Map<String, dynamic>.from(data['user'] as Map);
+          try {
+            await _storage.write(
+                key: 'user_data', value: json.encode(_userData));
+            debugPrint('AuthService: wrote user_data to storage');
+          } catch (e) {
+            debugPrint('AuthService: failed writing user_data to storage: $e');
+          }
+        }
+      } catch (e) {
+        debugPrint('AuthService: error handling user_data from login: $e');
+      }
+
       // inform ApiService of auth token
       _api.setAuthToken(_token);
+      // schedule automatic refresh based on token expiry
+      _scheduleRefreshFromToken();
       debugPrint(
           'AuthService.signIn: Set token on ApiService, token starts with: ${_token!.substring(0, 20)}...');
       // extract user id from JWT payload if present
@@ -116,10 +145,13 @@ class AuthService extends ChangeNotifier {
     _token = null;
     _refreshToken = null;
     _userId = null;
+    _userData = null;
+    _clearScheduledRefresh();
     // clear persisted tokens and ApiService
     try {
       await _storage.delete(key: 'access_token');
       await _storage.delete(key: 'refresh_token');
+      await _storage.delete(key: 'user_data');
     } catch (_) {}
     _api.setAuthToken(null);
     notifyListeners();
@@ -130,6 +162,18 @@ class AuthService extends ChangeNotifier {
     try {
       final a = await _storage.read(key: 'access_token');
       final r = await _storage.read(key: 'refresh_token');
+      final ud = await _storage.read(key: 'user_data');
+      if (ud != null) {
+        try {
+          final decoded = json.decode(ud) as Map<String, dynamic>;
+          _userData = decoded;
+          debugPrint(
+              'AuthService._loadFromStorage: loaded user_data from storage');
+        } catch (e) {
+          debugPrint(
+              'AuthService._loadFromStorage: failed to decode user_data: $e');
+        }
+      }
       debugPrint(
           'AuthService._loadFromStorage -> access: ${a == null ? 'null' : (a.length > 8 ? a.substring(0, 8) + '...' : a)}');
       debugPrint(
@@ -180,14 +224,20 @@ class AuthService extends ChangeNotifier {
             _token = null;
             _refreshToken = null;
             _userId = null;
+            _userData = null;
             _api.setAuthToken(null);
             await _storage.delete(key: 'access_token');
             await _storage.delete(key: 'refresh_token');
+            await _storage.delete(key: 'user_data');
           }
+        } else {
+          // token present and not expired -> schedule refresh
+          _scheduleRefreshFromToken();
         }
       }
       if (r != null) _refreshToken = r;
       // notify listeners after loading persisted tokens
+      _initialized = true;
       notifyListeners();
     } catch (_) {}
   }
@@ -195,13 +245,21 @@ class AuthService extends ChangeNotifier {
   /// Refresh the access token using refresh token stored in memory or secure storage.
   /// Returns true if refresh succeeded and tokens were updated.
   Future<bool> refreshAccessToken() async {
-    // Avoid concurrent refresh attempts
+    // If a refresh is already in progress, wait for it to complete and
+    // return whether a valid token is available afterwards. This avoids
+    // failing concurrent callers (they should retry using the refreshed token).
     if (_isRefreshing) {
       debugPrint(
-          'AuthService.refreshAccessToken: Already refreshing, aborting concurrent attempt');
-      return false;
+          'AuthService.refreshAccessToken: Refresh already in progress, awaiting result');
+      try {
+        await _refreshCompleter?.future;
+      } catch (_) {}
+      // After waiting, return true if a token is available
+      return _token != null;
     }
+
     _isRefreshing = true;
+    _refreshCompleter = Completer<void>();
     debugPrint('AuthService.refreshAccessToken: Starting token refresh...');
     try {
       var refresh = _refreshToken;
@@ -254,6 +312,8 @@ class AuthService extends ChangeNotifier {
             await _storage.write(key: 'access_token', value: _token);
           } catch (_) {}
           _api.setAuthToken(_token);
+          // reschedule automatic refresh based on new token
+          _scheduleRefreshFromToken();
           debugPrint(
               'AuthService.refreshAccessToken: New access token set successfully');
         }
@@ -279,8 +339,17 @@ class AuthService extends ChangeNotifier {
             }
           }
         } catch (_) {}
+        // If token did not contain a user_id claim, fall back to persisted user_data
+        try {
+          if ((_userId == null || _userId!.isEmpty) && _userData != null) {
+            final maybeId = _userData!['id'] ?? _userData!['pk'] ?? _userData!['user_id'];
+            if (maybeId != null) _userId = maybeId.toString();
+          }
+        } catch (_) {}
         notifyListeners();
         _isRefreshing = false;
+        _refreshCompleter?.complete();
+        _refreshCompleter = null;
         return true;
       }
       debugPrint(
@@ -289,6 +358,33 @@ class AuthService extends ChangeNotifier {
       debugPrint('AuthService.refreshAccessToken: Error during refresh: $e');
     }
     _isRefreshing = false;
+    _refreshCompleter?.complete();
+    _refreshCompleter = null;
+    return false;
+  }
+
+  /// Check whether current access token is expired by decoding its `exp` claim.
+  /// Returns true if token is missing or expired.
+  Future<bool> isAccessTokenExpired() async {
+    final tok = _token ?? await _storage.read(key: 'access_token');
+    if (tok == null) return true;
+    try {
+      final parts = tok.split('.');
+      if (parts.length != 3) return true;
+      final payload = parts[1];
+      final normalized = base64.normalize(payload);
+      final decoded = utf8.decode(base64Url.decode(normalized));
+      final Map payloadMap = json.decode(decoded) as Map<String, dynamic>;
+      if (payloadMap.containsKey('exp')) {
+        final exp = payloadMap['exp'] as int;
+        final expDate = DateTime.fromMillisecondsSinceEpoch(exp * 1000);
+        return DateTime.now().isAfter(expDate);
+      }
+    } catch (_) {
+      // If parsing fails conservatively assume expired
+      return true;
+    }
+    // No exp claim -> assume not expired
     return false;
   }
 
@@ -299,33 +395,76 @@ class AuthService extends ChangeNotifier {
     _token = null;
     _refreshToken = null;
     _userId = null;
+    _userData = null;
+    _clearScheduledRefresh();
     try {
       await _storage.delete(key: 'access_token');
       await _storage.delete(key: 'refresh_token');
+      await _storage.delete(key: 'user_data');
     } catch (_) {}
     _api.setAuthToken(null);
     notifyListeners();
   }
 
-  /// Register a new user. Returns true on success.
-  Future<bool> register(String username, String email, String password,
-      String confirmPassword) async {
+  /// Cancel any scheduled automatic refresh.
+  void _clearScheduledRefresh() {
     try {
-      final resp = await _api.post('/api/auth/register/',
-          headers: {'Content-Type': 'application/json'},
-          body: json.encode({
-            'username': username,
-            'email': email,
-            'password': password,
-            'confirm_password': confirmPassword
-          }));
-      if (resp.statusCode == 200 || resp.statusCode == 201) {
-        return true;
+      _refreshTimer?.cancel();
+    } catch (_) {}
+    _refreshTimer = null;
+  }
+
+  /// Schedule an automatic refresh shortly before the JWT `exp` claim.
+  /// If token has no exp or scheduling fails, no timer is set.
+  void _scheduleRefreshFromToken() {
+    _clearScheduledRefresh();
+    if (_token == null) return;
+    try {
+      final parts = _token!.split('.');
+      if (parts.length != 3) return;
+      final payload = parts[1];
+      final normalized = base64.normalize(payload);
+      final decoded = utf8.decode(base64Url.decode(normalized));
+      final Map payloadMap = json.decode(decoded) as Map<String, dynamic>;
+      if (!payloadMap.containsKey('exp')) return;
+      final exp = payloadMap['exp'] as int;
+      final expDate = DateTime.fromMillisecondsSinceEpoch(exp * 1000);
+      final now = DateTime.now();
+      // safety margin before expiry (seconds)
+      const safety = Duration(seconds: 10);
+      var refreshAt = expDate.subtract(safety);
+      // If refreshAt is in the past, schedule immediate refresh
+      if (refreshAt.isBefore(now)) {
+        // run async so we don't block caller
+        Future.microtask(() => refreshAccessToken());
+        return;
       }
-      return false;
-    } catch (_) {
-      return false;
+      final duration = refreshAt.difference(now);
+      _refreshTimer = Timer(duration, () async {
+        debugPrint('AuthService: Automatic scheduled token refresh triggered');
+        await refreshAccessToken();
+      });
+      debugPrint(
+          'AuthService: Scheduled token refresh in ${duration.inSeconds}s');
+    } catch (e) {
+      debugPrint(
+          'AuthService._scheduleRefreshFromToken: failed to schedule refresh: $e');
     }
+  }
+
+  /// Register a new user. Throws [ApiException] on failure.
+  Future<void> register(String username, String email, String password,
+      String confirmPassword) async {
+    await _api.post('/api/auth/register/',
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'username': username,
+          'email': email,
+          'password': password,
+          'confirm_password': confirmPassword
+        }));
+    // If ApiService returns without throwing, registration succeeded (201/200).
+    return;
   }
 
   /// Verify email with code
@@ -351,6 +490,52 @@ class AuthService extends ChangeNotifier {
       return false;
     } catch (_) {
       return false;
+    }
+  }
+
+  /// Request password reset (send OTP to email)
+  Future<bool> requestPasswordReset(String email) async {
+    try {
+      final resp = await _api.post('/api/auth/password/reset/',
+          headers: {'Content-Type': 'application/json'},
+          body: json.encode({'email': email}),
+          requiresAuth: false);
+      if (resp.statusCode == 200 || resp.statusCode == 201) return true;
+      return false;
+    } catch (e) {
+      // propagate ApiException so callers can inspect .body
+      rethrow;
+    }
+  }
+
+  /// Resend verification code for password reset
+  Future<bool> resendPasswordReset(String email) async {
+    try {
+      final resp = await _api.post(
+          '/api/auth/resend-verification-code-password/',
+          headers: {'Content-Type': 'application/json'},
+          body: json.encode({'email': email}),
+          requiresAuth: false);
+      if (resp.statusCode == 200 || resp.statusCode == 201) return true;
+      return false;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Confirm password reset (verify OTP and set new password)
+  Future<bool> confirmPasswordReset(
+      String email, String code, String newPassword) async {
+    try {
+      final resp = await _api.post('/api/auth/password/reset/confirm/',
+          headers: {'Content-Type': 'application/json'},
+          body: json.encode(
+              {'email': email, 'code': code, 'new_password': newPassword}),
+          requiresAuth: false);
+      if (resp.statusCode == 200 || resp.statusCode == 201) return true;
+      return false;
+    } catch (e) {
+      rethrow;
     }
   }
 }

@@ -5,6 +5,8 @@ import '../models/plot_model.dart';
 abstract class PlotRepository {
   Future<void> addPlot(PlotModel plot);
   Future<List<PlotEntity>> getPlots(String userId);
+  Future<void> updatePlot(PlotModel plot);
+  Future<void> deletePlot(String id);
 }
 
 class PlotRepositoryImpl implements PlotRepository {
@@ -20,5 +22,15 @@ class PlotRepositoryImpl implements PlotRepository {
   Future<List<PlotEntity>> getPlots(String userId) async {
     final models = await remote.getPlots(userId);
     return models;
+  }
+
+  @override
+  Future<void> updatePlot(PlotModel plot) async {
+    return remote.updatePlot(plot);
+  }
+
+  @override
+  Future<void> deletePlot(String id) async {
+    return remote.deletePlot(id);
   }
 }

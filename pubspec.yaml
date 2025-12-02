@@ -41,6 +41,9 @@ dependencies:
   flutter_secure_storage: ^9.0.0
   uuid: ^4.5.1
   mobile_scanner: ^7.1.2
+  geolocator: ^9.0.2
+  web_socket_channel: ^2.2.0
+  signal_strength_indicator: ^0.4.1
 
 dev_dependencies:
   flutter_test:

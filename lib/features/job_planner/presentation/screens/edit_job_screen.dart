@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:simdaas/core/utils/error_utils.dart';
 import '../../data/models/job_model.dart';
 import '../providers/job_providers.dart';
 import '../providers/edit_job_form_provider.dart';
@@ -746,8 +747,8 @@ class _EditJobScreenState extends ConsumerState<EditJobScreen> {
                       Navigator.of(ctx).pop(opId);
                     } catch (e) {
                       if (ctx.mounted)
-                        ScaffoldMessenger.of(parentCtx).showSnackBar(SnackBar(
-                            content: Text('Failed to create user: $e')));
+                        showPolishedError(parentCtx, e,
+                            fallback: 'Failed to create user');
                       creatingNotifier.value = false;
                     }
                   },

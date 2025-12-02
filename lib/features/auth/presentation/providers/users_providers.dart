@@ -63,6 +63,64 @@ class UsersController {
     }
   }
 
+  /// Fetch a single user by id using REST endpoints if available.
+  /// Returns null when the user cannot be found or on error.
+  Future<Map<String, dynamic>?> getUserById(String id) async {
+    try {
+      final candidates = [
+        '/api/users/$id/',
+        '/api/users/$id',
+        '/users/$id',
+        '/users/$id/',
+        '/users/api/$id',
+        '/users/api/$id/',
+        // Some backends expose a query param endpoint
+        '/api/users/?id=$id',
+        '/api/users/?pk=$id',
+      ];
+      http.Response? lastResp;
+      Exception? lastEx;
+      for (final p in candidates) {
+        try {
+          final resp = await _api.get(p);
+          if (resp.statusCode == 200) {
+            lastResp = resp;
+            break;
+          }
+        } catch (e) {
+          lastEx = e as Exception;
+        }
+      }
+      if (lastResp == null) {
+        // ignore: avoid_print
+        print(
+            'UsersController.getUserById: no successful response for $id: $lastEx');
+        return null;
+      }
+      final data = json.decode(lastResp.body);
+      if (data == null) return null;
+      if (data is List && data.isNotEmpty) {
+        // sometimes query endpoints return a list
+        final map =
+            Map<String, dynamic>.from(data.first as Map<String, dynamic>);
+        final uid = (map['id']?.toString() ?? map['pk']?.toString() ?? '');
+        map['id'] = uid;
+        return map;
+      }
+      if (data is Map) {
+        final map = Map<String, dynamic>.from(data as Map<String, dynamic>);
+        final uid = (map['id']?.toString() ?? map['pk']?.toString() ?? '');
+        map['id'] = uid;
+        return map;
+      }
+      return null;
+    } catch (e, st) {
+      // ignore: avoid_print
+      print('UsersController.getUserById error: $e\n$st');
+      return null;
+    }
+  }
+
   /// Create a new user via the REST API. Returns the created user's id if
   /// available.
   Future<String> createUser(
@@ -248,5 +306,17 @@ final usersListProvider = FutureProvider((ref) async {
     // ignore: avoid_print
     print('usersListProvider: failed to load users: $e\n$st');
     return <Map<String, dynamic>>[];
+  }
+});
+
+/// Fetch a single user by id. Returns null when not found.
+final userByIdProvider =
+    FutureProvider.family<Map<String, dynamic>?, String>((ref, id) async {
+  final ctrl = ref.read(usersControllerProvider);
+  try {
+    final u = await ctrl.getUserById(id);
+    return u;
+  } catch (e) {
+    return null;
   }
 });

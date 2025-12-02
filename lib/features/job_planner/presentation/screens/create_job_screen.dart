@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:simdaas/core/utils/error_utils.dart';
 import '../../data/models/job_model.dart';
 import '../../domain/entities/job.dart';
 import '../providers/job_providers.dart';
@@ -154,8 +155,8 @@ class _CreateJobScreenState extends ConsumerState<CreateJobScreen> {
                       Navigator.of(ctx).pop(opId);
                     } catch (e) {
                       if (ctx.mounted)
-                        ScaffoldMessenger.of(parentCtx).showSnackBar(SnackBar(
-                            content: Text('Failed to create user: $e')));
+                        showPolishedError(parentCtx, e,
+                            fallback: 'Failed to create user');
                       creatingNotifier.value = false;
                     }
                   },
@@ -562,110 +563,148 @@ class _CreateJobScreenState extends ConsumerState<CreateJobScreen> {
                             // Resolve fertilizer names from the global fertilizers
                             // list provider so we always display names (not ids).
                             Consumer(builder: (c, ref2, _) {
-                              final allFertsAsync =
-                                  ref2.watch(fert_provs.fertilizersListProvider);
-                              return allFertsAsync.when(
-                                  data: (allFerts) {
-                                    return Column(
-                                      children: formState.materials
-                                          .asMap()
-                                          .entries
-                                          .map((entry) {
-                                        final idx = entry.key;
-                                        final m = entry.value;
-                                        final ferts = m['fertilizers'] as List<dynamic>?;
-                                        return Card(
-                                          child: ListTile(
-                                            title: Text(m['name'] ?? m['mixName'] ?? 'Unnamed mix'),
-                                            subtitle: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                if (ferts == null || ferts.isEmpty)
-                                                  const Text('No fertilizers'),
-                                                if (ferts != null && ferts.isNotEmpty)
-                                                  ...ferts.map((f) {
-                                                    final fid = f['fertilizer']?.toString() ?? '';
-                                                    final found = allFerts.firstWhere(
-                                                        (af) => (af['id']?.toString() ?? af['pk']?.toString() ?? '') == fid,
-                                                        orElse: () => <String, dynamic>{});
-                                                    final foundName = found['name']?.toString();
-                                                    final display = f['name']?.toString() ?? foundName ?? (fid.isNotEmpty ? fid : 'Unnamed');
-                                                    return Text('$display — Qty: ${f['quantity'] ?? ''}');
-                                                  }).toList()
-                                              ],
-                                            ),
-                                            trailing: IconButton(
-                                                icon: const Icon(Icons.delete),
-                                                onPressed: () => ref
-                                                    .read(createJobFormProvider.notifier)
-                                                    .removeMaterial(idx)),
-                                          ),
-                                        );
-                                      }).toList(),
+                              final allFertsAsync = ref2
+                                  .watch(fert_provs.fertilizersListProvider);
+                              return allFertsAsync.when(data: (allFerts) {
+                                return Column(
+                                  children: formState.materials
+                                      .asMap()
+                                      .entries
+                                      .map((entry) {
+                                    final idx = entry.key;
+                                    final m = entry.value;
+                                    final ferts =
+                                        m['fertilizers'] as List<dynamic>?;
+                                    return Card(
+                                      child: ListTile(
+                                        title: Text(m['name'] ??
+                                            m['mixName'] ??
+                                            'Unnamed mix'),
+                                        subtitle: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            if (ferts == null || ferts.isEmpty)
+                                              const Text('No fertilizers'),
+                                            if (ferts != null &&
+                                                ferts.isNotEmpty)
+                                              ...ferts.map((f) {
+                                                final fid = f['fertilizer']
+                                                        ?.toString() ??
+                                                    '';
+                                                final found = allFerts.firstWhere(
+                                                    (af) =>
+                                                        (af['id']?.toString() ??
+                                                            af['pk']
+                                                                ?.toString() ??
+                                                            '') ==
+                                                        fid,
+                                                    orElse: () =>
+                                                        <String, dynamic>{});
+                                                final foundName =
+                                                    found['name']?.toString();
+                                                final display =
+                                                    f['name']?.toString() ??
+                                                        foundName ??
+                                                        (fid.isNotEmpty
+                                                            ? fid
+                                                            : 'Unnamed');
+                                                return Text(
+                                                    '$display — Qty: ${f['quantity'] ?? ''}');
+                                              }).toList()
+                                          ],
+                                        ),
+                                        trailing: IconButton(
+                                            icon: const Icon(Icons.delete),
+                                            onPressed: () => ref
+                                                .read(createJobFormProvider
+                                                    .notifier)
+                                                .removeMaterial(idx)),
+                                      ),
                                     );
-                                  },
-                                  loading: () {
-                                    // Render items but fall back to raw name/id while loading
-                                    return Column(
-                                      children: formState.materials
-                                          .asMap()
-                                          .entries
-                                          .map((entry) {
-                                        final idx = entry.key;
-                                        final m = entry.value;
-                                        final ferts = m['fertilizers'] as List<dynamic>?;
-                                        return Card(
-                                          child: ListTile(
-                                            title: Text(m['name'] ?? m['mixName'] ?? 'Unnamed mix'),
-                                            subtitle: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                  if (ferts == null || ferts.isEmpty)
-                                                    const Text('No fertilizers'),
-                                                  if (ferts != null && ferts.isNotEmpty)
-                                                    ...ferts.map((f) => Text('${f['name']?.toString() ?? f['fertilizer']?.toString() ?? ''} — Qty: ${f['quantity'] ?? ''}')).toList()
-                                                ]),
-                                            trailing: IconButton(
-                                                icon: const Icon(Icons.delete),
-                                                onPressed: () => ref
-                                                    .read(createJobFormProvider.notifier)
-                                                    .removeMaterial(idx)),
-                                          ),
-                                        );
-                                      }).toList(),
+                                  }).toList(),
+                                );
+                              }, loading: () {
+                                // Render items but fall back to raw name/id while loading
+                                return Column(
+                                  children: formState.materials
+                                      .asMap()
+                                      .entries
+                                      .map((entry) {
+                                    final idx = entry.key;
+                                    final m = entry.value;
+                                    final ferts =
+                                        m['fertilizers'] as List<dynamic>?;
+                                    return Card(
+                                      child: ListTile(
+                                        title: Text(m['name'] ??
+                                            m['mixName'] ??
+                                            'Unnamed mix'),
+                                        subtitle: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              if (ferts == null ||
+                                                  ferts.isEmpty)
+                                                const Text('No fertilizers'),
+                                              if (ferts != null &&
+                                                  ferts.isNotEmpty)
+                                                ...ferts
+                                                    .map((f) => Text(
+                                                        '${f['name']?.toString() ?? f['fertilizer']?.toString() ?? ''} — Qty: ${f['quantity'] ?? ''}'))
+                                                    .toList()
+                                            ]),
+                                        trailing: IconButton(
+                                            icon: const Icon(Icons.delete),
+                                            onPressed: () => ref
+                                                .read(createJobFormProvider
+                                                    .notifier)
+                                                .removeMaterial(idx)),
+                                      ),
                                     );
-                                  },
-                                  error: (e, st) {
-                                    // If fertilizer list failed to load, still render raw entries
-                                    return Column(
-                                      children: formState.materials
-                                          .asMap()
-                                          .entries
-                                          .map((entry) {
-                                        final idx = entry.key;
-                                        final m = entry.value;
-                                        final ferts = m['fertilizers'] as List<dynamic>?;
-                                        return Card(
-                                          child: ListTile(
-                                            title: Text(m['name'] ?? m['mixName'] ?? 'Unnamed mix'),
-                                            subtitle: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                  if (ferts == null || ferts.isEmpty)
-                                                    const Text('No fertilizers'),
-                                                  if (ferts != null && ferts.isNotEmpty)
-                                                    ...ferts.map((f) => Text('${f['name']?.toString() ?? f['fertilizer']?.toString() ?? ''} — Qty: ${f['quantity'] ?? ''}')).toList()
-                                                ]),
-                                            trailing: IconButton(
-                                                icon: const Icon(Icons.delete),
-                                                onPressed: () => ref
-                                                    .read(createJobFormProvider.notifier)
-                                                    .removeMaterial(idx)),
-                                          ),
-                                        );
-                                      }).toList(),
+                                  }).toList(),
+                                );
+                              }, error: (e, st) {
+                                // If fertilizer list failed to load, still render raw entries
+                                return Column(
+                                  children: formState.materials
+                                      .asMap()
+                                      .entries
+                                      .map((entry) {
+                                    final idx = entry.key;
+                                    final m = entry.value;
+                                    final ferts =
+                                        m['fertilizers'] as List<dynamic>?;
+                                    return Card(
+                                      child: ListTile(
+                                        title: Text(m['name'] ??
+                                            m['mixName'] ??
+                                            'Unnamed mix'),
+                                        subtitle: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              if (ferts == null ||
+                                                  ferts.isEmpty)
+                                                const Text('No fertilizers'),
+                                              if (ferts != null &&
+                                                  ferts.isNotEmpty)
+                                                ...ferts
+                                                    .map((f) => Text(
+                                                        '${f['name']?.toString() ?? f['fertilizer']?.toString() ?? ''} — Qty: ${f['quantity'] ?? ''}'))
+                                                    .toList()
+                                            ]),
+                                        trailing: IconButton(
+                                            icon: const Icon(Icons.delete),
+                                            onPressed: () => ref
+                                                .read(createJobFormProvider
+                                                    .notifier)
+                                                .removeMaterial(idx)),
+                                      ),
                                     );
-                                  });
+                                  }).toList(),
+                                );
+                              });
                             }),
                             Align(
                               alignment: Alignment.centerRight,
@@ -756,10 +795,8 @@ class _CreateJobScreenState extends ConsumerState<CreateJobScreen> {
                                                 .addMaterial(picked);
                                           }
                                         } catch (e) {
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(SnackBar(
-                                                  content: Text(
-                                                      'Failed to load mixes: $e')));
+                                          showPolishedError(context, e,
+                                              fallback: 'Failed to load mixes');
                                         }
                                       },
                                       child: const Text('Select existing mix')),

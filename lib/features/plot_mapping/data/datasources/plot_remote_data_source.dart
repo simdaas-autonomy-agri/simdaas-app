@@ -5,6 +5,8 @@ import '../models/plot_model.dart';
 abstract class PlotRemoteDataSource {
   Future<void> addPlot(PlotModel plot);
   Future<List<PlotModel>> getPlots(String userId);
+  Future<void> updatePlot(PlotModel plot);
+  Future<void> deletePlot(String id);
 }
 
 class PlotRemoteDataSourceImpl implements PlotRemoteDataSource {
@@ -64,5 +66,21 @@ class PlotRemoteDataSourceImpl implements PlotRemoteDataSource {
       out.add(PlotModel.fromJson(id, jsonItem));
     }
     return out;
+  }
+
+  @override
+  Future<void> updatePlot(PlotModel plot) async {
+    final payload = plot.toJson();
+    final body = json.encode(payload);
+    // PATCH to the specific plot endpoint; backend expected trailing slash
+    await api.patch('/plot/api/${plot.id}/',
+        headers: {'Content-Type': 'application/json'}, body: body);
+  }
+
+  @override
+  Future<void> deletePlot(String id) async {
+    // backend expects DELETE on the resource URL
+    await api.delete('/plot/api/$id/',
+        headers: {'Content-Type': 'application/json'});
   }
 }

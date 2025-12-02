@@ -55,7 +55,8 @@ class CreateJobFormNotifier extends StateNotifier<CreateJobFormState> {
     // (contains 'mixId' or a non-empty 'fertilizers' list), replace the
     // existing materials with this one. Otherwise, append as before.
     final isMix = material.containsKey('mixId') ||
-        ((material['fertilizers'] is List) && (material['fertilizers'] as List).isNotEmpty);
+        ((material['fertilizers'] is List) &&
+            (material['fertilizers'] as List).isNotEmpty);
     if (isMix) {
       state = state.copyWith(materials: [material]);
     } else {

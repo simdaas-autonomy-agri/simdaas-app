@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:simdaas/core/services/auth_service.dart';
+import 'package:simdaas/core/utils/error_utils.dart';
 import 'package:latlong2/latlong.dart';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
@@ -73,7 +74,7 @@ class PlotListScreen extends ConsumerWidget {
           },
         ),
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, st) => Center(child: Text('Error: $e')),
+        error: (e, st) => Center(child: Text(extractErrorMessage(e))),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {

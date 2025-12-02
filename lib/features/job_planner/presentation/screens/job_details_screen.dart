@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:simdaas/core/utils/error_utils.dart';
 import '../../../plot_mapping/presentation/providers/plot_providers.dart'
     as fm_providers;
 import '../../../plot_mapping/data/models/plot_model.dart' as fm_models;
@@ -277,11 +278,11 @@ class JobDetailsScreen extends ConsumerWidget {
                     ]);
               },
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, st) => Center(child: Text('Users error: $e')),
+              error: (e, st) => Center(child: Text(extractErrorMessage(e))),
             );
           },
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, st) => Center(child: Text('Plots error: $e')),
+          error: (e, st) => Center(child: Text(extractErrorMessage(e))),
         ),
       ),
     );

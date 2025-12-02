@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:simdaas/core/services/auth_service.dart';
-import '../../../job_planner/presentation/providers/job_providers.dart';
-import '../../../job_planner/domain/entities/job.dart' as job_entities;
+import 'package:simdaas/core/utils/error_utils.dart';
+// job providers intentionally not imported here to avoid circular deps
 import '../../domain/entities/plot.dart';
 // avoid importing plot_list_screen to prevent a circular import; reimplement a small preview widget here
 import 'dart:math' as math;
 import 'dart:ui' as ui;
-import '../../../job_planner/presentation/screens/job_details_screen.dart';
-import '../../../data_monitoring/presentation/screens/monitoring_screen.dart';
+import '../../data/models/plot_model.dart';
+import '../providers/plot_providers.dart';
 
 class PlotPreview extends StatelessWidget {
   final List<LatLng> polygon;
@@ -124,23 +124,209 @@ class PlotDetailsScreen extends ConsumerWidget {
   final PlotEntity plot;
   const PlotDetailsScreen({super.key, required this.plot});
 
-  Color _statusColor(job_entities.JobStatus status) {
-    switch (status) {
-      case job_entities.JobStatus.scheduled:
-        return Colors.orange;
-      case job_entities.JobStatus.ongoing:
-        return Colors.green;
-      case job_entities.JobStatus.completed:
-        return Colors.grey;
-      case job_entities.JobStatus.delayed:
-        return Colors.red;
-    }
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      appBar: AppBar(title: Text(plot.name)),
+      appBar: AppBar(
+        title: Text(plot.name),
+        actions: [
+          IconButton(
+            tooltip: 'Edit plot details',
+            icon: const Icon(Icons.edit),
+            onPressed: () async {
+              final nameCtrl = TextEditingController(text: plot.name);
+              final areaCtrl =
+                  TextEditingController(text: plot.area?.toString() ?? '');
+              final bedCtrl =
+                  TextEditingController(text: plot.bedHeight?.toString() ?? '');
+              final rowCtrl = TextEditingController(
+                  text: plot.rowSpacing?.toString() ?? '');
+              final treeCtrl =
+                  TextEditingController(text: plot.treeCount?.toString() ?? '');
+
+              final res = await showModalBottomSheet<Map<String, String>?>(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+                ),
+                builder: (ctx) {
+                  final insets = MediaQuery.of(ctx).viewInsets.bottom;
+                  final maxHeight = MediaQuery.of(ctx).size.height * 0.9;
+                  return AnimatedPadding(
+                    duration: const Duration(milliseconds: 250),
+                    padding: EdgeInsets.only(bottom: insets),
+                    child: FractionallySizedBox(
+                      heightFactor: 0.75,
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(maxHeight: maxHeight),
+                        child: Material(
+                          color: Theme.of(context).scaffoldBackgroundColor,
+                          elevation: 8,
+                          shape: const RoundedRectangleBorder(
+                              borderRadius: BorderRadius.vertical(
+                                  top: Radius.circular(12))),
+                          child: SingleChildScrollView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12.0, vertical: 12.0),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  // small drag handle
+                                  Center(
+                                    child: Container(
+                                      width: 36,
+                                      height: 4,
+                                      margin: const EdgeInsets.only(bottom: 8),
+                                      decoration: BoxDecoration(
+                                          color: Colors.grey[400],
+                                          borderRadius:
+                                              BorderRadius.circular(4)),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  TextField(
+                                      controller: nameCtrl,
+                                      decoration: const InputDecoration(
+                                          labelText: 'Plot Name')),
+                                  const SizedBox(height: 8),
+                                  TextField(
+                                      controller: areaCtrl,
+                                      keyboardType:
+                                          const TextInputType.numberWithOptions(
+                                              decimal: true),
+                                      decoration: const InputDecoration(
+                                          labelText: 'Approx Area (ha)')),
+                                  const SizedBox(height: 8),
+                                  TextField(
+                                      controller: rowCtrl,
+                                      keyboardType:
+                                          const TextInputType.numberWithOptions(
+                                              decimal: true),
+                                      decoration: const InputDecoration(
+                                          labelText: 'Row Spacing (m)')),
+                                  const SizedBox(height: 8),
+                                  TextField(
+                                      controller: bedCtrl,
+                                      keyboardType:
+                                          const TextInputType.numberWithOptions(
+                                              decimal: true),
+                                      decoration: const InputDecoration(
+                                          labelText: 'Bed Height (m)')),
+                                  const SizedBox(height: 8),
+                                  TextField(
+                                      controller: treeCtrl,
+                                      keyboardType: TextInputType.number,
+                                      decoration: const InputDecoration(
+                                          labelText: 'Total Trees')),
+                                  const SizedBox(height: 16),
+                                  ElevatedButton(
+                                    onPressed: () {
+                                      Navigator.of(ctx).pop({
+                                        'name': nameCtrl.text,
+                                        'area': areaCtrl.text,
+                                        'rowSpacing': rowCtrl.text,
+                                        'bedHeight': bedCtrl.text,
+                                        'treeCount': treeCtrl.text,
+                                      });
+                                    },
+                                    child: const Padding(
+                                        padding: EdgeInsets.symmetric(
+                                            vertical: 12.0),
+                                        child: Text('Save')),
+                                  ),
+                                  SizedBox(height: insets),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              );
+
+              if (res != null) {
+                final repo = ref.read(plotRepoProvider);
+                final updated = PlotModel(
+                  id: plot.id,
+                  name: res['name'] ?? plot.name,
+                  userId: plot.userId,
+                  polygon: plot.polygon,
+                  bedHeight: double.tryParse(res['bedHeight'] ?? ''),
+                  area: double.tryParse(res['area'] ?? ''),
+                  rowSpacing: double.tryParse(res['rowSpacing'] ?? ''),
+                  treeCount: int.tryParse(res['treeCount'] ?? ''),
+                );
+                try {
+                  await repo.updatePlot(updated);
+                  final currentUserId =
+                      ref.read(authServiceProvider).currentUserId;
+                  if (currentUserId != null)
+                    ref.invalidate(plotsListProvider(currentUserId));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Plot updated')));
+                  // replace this route with a fresh details page for the updated plot
+                  Navigator.of(context).pushReplacement(MaterialPageRoute(
+                      builder: (_) => PlotDetailsScreen(plot: updated)));
+                } catch (e) {
+                  showPolishedError(context, e, fallback: 'Error updating plot');
+                }
+              }
+            },
+          ),
+          IconButton(
+            tooltip: 'Delete plot',
+            icon: const Icon(Icons.delete_outline),
+            onPressed: () async {
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Delete plot'),
+                  content: const Text(
+                      'Are you sure you want to delete this plot? This action cannot be undone.\nNote: Ensure you have not connected this plot to any equipment.'),
+                  actions: [
+                    TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(false),
+                        child: const Text('Cancel')),
+                    TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(true),
+                      child: const Text('Delete',
+                          style: TextStyle(color: Colors.red)),
+                    ),
+                  ],
+                ),
+              );
+
+              if (confirm != true) return;
+
+              final repo = ref.read(plotRepoProvider);
+              try {
+                await repo.deletePlot(plot.id);
+                final currentUserId =
+                    ref.read(authServiceProvider).currentUserId;
+                if (currentUserId != null) {
+                  ref.invalidate(plotsListProvider(currentUserId));
+                }
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Plot deleted')));
+                  Navigator.of(context).pop();
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  showPolishedError(context, e, fallback: 'Error deleting plot');
+                }
+              }
+            },
+          )
+        ],
+      ),
       body: CustomScrollView(
         slivers: [
           // Top preview as a simple sliver

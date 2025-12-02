@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:simdaas/core/services/api_service.dart';
 import '../models/equipment_model.dart';
 import '../../domain/entities/equipment.dart';
@@ -29,6 +30,7 @@ class EquipmentRemoteDataSourceImpl implements EquipmentRemoteDataSource {
       if (userId != null) {
         final parsed = int.tryParse(userId.toString());
         bodyMap['user_id'] = parsed ?? userId;
+        bodyMap['user'] = parsed ?? userId;
       }
       if (data['wheelDiameter'] != null) {
         final wd = data['wheelDiameter'];
@@ -55,6 +57,7 @@ class EquipmentRemoteDataSourceImpl implements EquipmentRemoteDataSource {
       if (userId != null) {
         final parsed = int.tryParse(userId.toString());
         bodyMap['user_id'] = parsed ?? userId;
+        bodyMap['user'] = parsed ?? userId;
       }
       // optional fields - only include when provided
       if (data['nozzleCount'] != null) {
@@ -96,6 +99,7 @@ class EquipmentRemoteDataSourceImpl implements EquipmentRemoteDataSource {
       if (userId != null) {
         final parsed = int.tryParse(userId.toString());
         bodyMap['user_id'] = parsed ?? userId;
+        bodyMap['user'] = parsed ?? userId;
       }
       if (data['linkedPlotId'] != null) {
         final p = int.tryParse(data['linkedPlotId'].toString());
@@ -148,6 +152,7 @@ class EquipmentRemoteDataSourceImpl implements EquipmentRemoteDataSource {
       if (userId != null) {
         final parsed = int.tryParse(userId.toString());
         bodyMap['user_id'] = parsed ?? userId;
+        bodyMap['user'] = parsed ?? userId;
       }
       if (data['wheelDiameter'] != null)
         bodyMap['wheel_diameter'] = data['wheelDiameter'];
@@ -159,7 +164,8 @@ class EquipmentRemoteDataSourceImpl implements EquipmentRemoteDataSource {
         bodyMap['contact_number'] = data['contactNumber'];
 
       final body = json.encode(bodyMap);
-      await api.post('/api/tractors/$id/',
+      // Use PATCH for partial updates
+      await api.patch('/api/tractors/$id/',
           headers: {'Content-Type': 'application/json'}, body: body);
       return;
     } else if (category == 'sprayer') {
@@ -168,6 +174,7 @@ class EquipmentRemoteDataSourceImpl implements EquipmentRemoteDataSource {
       if (userId != null) {
         final parsed = int.tryParse(userId.toString());
         bodyMap['user_id'] = parsed ?? userId;
+        bodyMap['user'] = parsed ?? userId;
       }
       if (data['nozzleCount'] != null)
         bodyMap['nozzle_count'] = data['nozzleCount'];
@@ -188,7 +195,8 @@ class EquipmentRemoteDataSourceImpl implements EquipmentRemoteDataSource {
             data['hingeToControlUnit'].toString();
 
       final body = json.encode(bodyMap);
-      await api.post('/api/sprayers/$id/',
+      // Use PATCH for partial updates
+      await api.patch('/api/sprayers/$id/',
           headers: {'Content-Type': 'application/json'}, body: body);
       return;
     }
@@ -200,16 +208,40 @@ class EquipmentRemoteDataSourceImpl implements EquipmentRemoteDataSource {
       if (userId != null) {
         final parsed = int.tryParse(userId.toString());
         bodyMap['user_id'] = parsed ?? userId;
+        bodyMap['user'] = parsed ?? userId;
       }
       if (data.containsKey('macAddress'))
         bodyMap['mac_addr'] = data['macAddress'];
-      if (data['linkedSprayerId'] != null) {
-        final p = int.tryParse(data['linkedSprayerId'].toString());
-        if (p != null) bodyMap['sprayer'] = p;
+      // Respect explicit presence of keys even when null so callers can clear
+      // links by sending `linkedSprayerId: null` etc.
+      if (data.containsKey('linkedSprayerId')) {
+        final raw = data['linkedSprayerId'];
+        if (raw == null) {
+          bodyMap['sprayer'] = null;
+        } else {
+          final p = int.tryParse(raw.toString());
+          if (p != null) bodyMap['sprayer'] = p;
+        }
       }
-      if (data['linkedTractorId'] != null) {
-        final p = int.tryParse(data['linkedTractorId'].toString());
-        if (p != null) bodyMap['tractor'] = p;
+      if (data.containsKey('linkedTractorId')) {
+        final raw = data['linkedTractorId'];
+        if (raw == null) {
+          bodyMap['tractor'] = null;
+        } else {
+          final p = int.tryParse(raw.toString());
+          if (p != null) bodyMap['tractor'] = p;
+        }
+      }
+      print("linkedPlotId check-----------------------------");
+      print(data);
+      if (data.containsKey('linkedPlotId')) {
+        final raw = data['linkedPlotId'];
+        if (raw == null) {
+          bodyMap['plot'] = null;
+        } else {
+          final p = int.tryParse(raw.toString());
+          if (p != null) bodyMap['plot'] = p;
+        }
       }
       if (data.containsKey('lidarNozzleDistance'))
         bodyMap['distance_b_w_sensor_and_nozzle_center'] =
@@ -221,13 +253,18 @@ class EquipmentRemoteDataSourceImpl implements EquipmentRemoteDataSource {
             data['ultrasonicDistance'];
 
       final body = json.encode(bodyMap);
-      await api.post('/api/control-units/$id/',
+      // Debug: log outgoing payload for easier troubleshooting
+      // ignore: avoid_print
+      print('PATCH /api/control-units/$id/ payload: $body');
+      // Use PATCH for partial updates
+      await api.patch('/api/control-units/$id/',
           headers: {'Content-Type': 'application/json'}, body: body);
       return;
     }
 
     final body = json.encode(data);
-    await api.post('/api/equipments/$id/',
+    // Fallback: use PATCH for partial update on generic endpoint
+    await api.patch('/api/equipments/$id/',
         headers: {'Content-Type': 'application/json'}, body: body);
   }
 
@@ -316,16 +353,24 @@ class EquipmentRemoteDataSourceImpl implements EquipmentRemoteDataSource {
 
   @override
   Future<List<EquipmentEntity>> getControlUnits(String userId) async {
-    final resp = await api.get('/api/control-units/');
-    final List<EquipmentEntity> out = [];
-    final arr = json.decode(resp.body) as List<dynamic>;
-    for (final item in arr) {
-      final map = Map<String, dynamic>.from(item as Map);
-      final id = (map['id']?.toString() ?? map['pk']?.toString() ?? '');
-      final normalized = _normalizeEquipmentMap(map, 'control_unit');
-      out.add(EquipmentModel.fromJson(id, normalized));
+    try {
+      debugPrint('EquipmentRemoteDataSource: GET /api/control-units/ (userId=$userId)');
+      final resp = await api.get('/api/control-units/');
+      debugPrint('EquipmentRemoteDataSource: /api/control-units/ status=${resp.statusCode} body_len=${resp.body.length}');
+      final List<EquipmentEntity> out = [];
+      final arr = json.decode(resp.body) as List<dynamic>;
+      for (final item in arr) {
+        final map = Map<String, dynamic>.from(item as Map);
+        final id = (map['id']?.toString() ?? map['pk']?.toString() ?? '');
+        final normalized = _normalizeEquipmentMap(map, 'control_unit');
+        out.add(EquipmentModel.fromJson(id, normalized));
+      }
+      return out;
+    } catch (e, st) {
+      debugPrint('EquipmentRemoteDataSource.getControlUnits: error: $e');
+      debugPrint('EquipmentRemoteDataSource.getControlUnits: stack: $st');
+      rethrow;
     }
-    return out;
   }
 
   // Convert snake_case API response keys into the camelCase keys expected by
@@ -424,8 +469,10 @@ class EquipmentRemoteDataSourceImpl implements EquipmentRemoteDataSource {
       out['linkedTractorId'] = src['tractor']?.toString();
     // map plot references to linkedPlotId (APIs may use 'plot' or 'plot_id')
     if (src.containsKey('plot')) out['linkedPlotId'] = src['plot']?.toString();
-    if (src.containsKey('plot_id')) out['linkedPlotId'] = src['plot_id']?.toString();
-    if (src.containsKey('linked_plot_id')) out['linkedPlotId'] = src['linked_plot_id']?.toString();
+    if (src.containsKey('plot_id'))
+      out['linkedPlotId'] = src['plot_id']?.toString();
+    if (src.containsKey('linked_plot_id'))
+      out['linkedPlotId'] = src['linked_plot_id']?.toString();
     if (src.containsKey('linked_sprayer_id'))
       out['linkedSprayerId'] = src['linked_sprayer_id']?.toString();
     if (src.containsKey('linked_tractor_id'))

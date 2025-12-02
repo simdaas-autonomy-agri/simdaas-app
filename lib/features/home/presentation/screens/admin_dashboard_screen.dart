@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:simdaas/core/services/auth_service.dart';
+import 'package:simdaas/core/utils/error_utils.dart';
 import '../../../job_planner/presentation/providers/job_providers.dart';
 import '../../../job_planner/domain/entities/job.dart';
 import '../../../auth/presentation/providers/users_providers.dart'
@@ -244,16 +245,16 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                       },
                       loading: () =>
                           const Center(child: CircularProgressIndicator()),
-                      error: (e, st) => Center(child: Text('Plots error: $e')),
+                      error: (e, st) => Center(child: Text(extractErrorMessage(e))),
                     );
                   },
                   loading: () =>
                       const Center(child: CircularProgressIndicator()),
-                  error: (e, st) => Center(child: Text('Users error: $e')),
+                  error: (e, st) => Center(child: Text(extractErrorMessage(e))),
                 );
               },
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, st) => Center(child: Text('Error loading jobs: $e')),
+              error: (e, st) => Center(child: Text(extractErrorMessage(e))),
             ),
           ),
           const SizedBox(height: 12),

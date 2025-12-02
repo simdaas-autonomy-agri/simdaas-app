@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/equipment_providers.dart';
 import 'package:simdaas/core/services/auth_service.dart';
+import 'dart:convert';
+import 'package:simdaas/core/services/api_exception.dart';
 
 class CreateEquipmentScreen extends ConsumerStatefulWidget {
   final Map<String, dynamic>? existingData;
@@ -256,60 +258,90 @@ class _CreateEquipmentScreenState extends ConsumerState<CreateEquipmentScreen> {
 
                   final currentUserId =
                       ref.read(authServiceProvider).currentUserId;
-                  if (isEditing) {
-                    final id = widget.existingData!['id'] as String? ??
-                        DateTime.now().millisecondsSinceEpoch.toString();
-                    final data = {
-                      'category': _category,
-                      'name': _name.text,
-                      'userId': currentUserId,
-                      'status':
-                          widget.existingData!['status'] as String? ?? 'vacant',
-                      'controlUnitId': _controlUnitId.text.isEmpty
-                          ? null
-                          : _controlUnitId.text,
-                      'mountingHeight': mountingHeight,
-                      'lidarNozzleDistance': lidarNozzleDistance,
-                      'ultrasonicDistance': ultrasonicDistance,
-                      'wheelDiameter': wheelDiameter,
-                      'screwsInWheel': screwsInWheel,
-                      'axleLength': axleLength,
-                      'hingeToAxle': hingeToAxle,
-                      'hingeToNozzle': hingeToNozzle,
-                      'hingeToControlUnit': hingeToControlUnit,
-                      'macAddress': macAddress,
-                      'linkedSprayerId': linkedSprayerId,
-                      'linkedTractorId': linkedTractorId,
-                    };
-                    await ctrl.update(id, data);
-                  } else {
-                    final id = DateTime.now().millisecondsSinceEpoch.toString();
-                    final data = {
-                      'id': id,
-                      'category': _category,
-                      'name': _name.text,
-                      'userId': currentUserId,
-                      'status': 'vacant',
-                      'controlUnitId': _controlUnitId.text.isEmpty
-                          ? null
-                          : _controlUnitId.text,
-                      'mountingHeight': mountingHeight,
-                      'lidarNozzleDistance': lidarNozzleDistance,
-                      'ultrasonicDistance': ultrasonicDistance,
-                      'wheelDiameter': wheelDiameter,
-                      'screwsInWheel': screwsInWheel,
-                      'axleLength': axleLength,
-                      'hingeToAxle': hingeToAxle,
-                      'hingeToNozzle': hingeToNozzle,
-                      'hingeToControlUnit': hingeToControlUnit,
-                      'macAddress': macAddress,
-                      'linkedSprayerId': linkedSprayerId,
-                      'linkedTractorId': linkedTractorId,
-                    };
-                    await ctrl.add(data);
+                  try {
+                    if (isEditing) {
+                      final id = widget.existingData!['id'] as String? ??
+                          DateTime.now().millisecondsSinceEpoch.toString();
+                      final data = {
+                        'category': _category,
+                        'name': _name.text,
+                        'userId': currentUserId,
+                        'status':
+                            widget.existingData!['status'] as String? ?? 'vacant',
+                        'controlUnitId': _controlUnitId.text.isEmpty
+                            ? null
+                            : _controlUnitId.text,
+                        'mountingHeight': mountingHeight,
+                        'lidarNozzleDistance': lidarNozzleDistance,
+                        'ultrasonicDistance': ultrasonicDistance,
+                        'wheelDiameter': wheelDiameter,
+                        'screwsInWheel': screwsInWheel,
+                        'axleLength': axleLength,
+                        'hingeToAxle': hingeToAxle,
+                        'hingeToNozzle': hingeToNozzle,
+                        'hingeToControlUnit': hingeToControlUnit,
+                        'macAddress': macAddress,
+                        'linkedSprayerId': linkedSprayerId,
+                        'linkedTractorId': linkedTractorId,
+                      };
+                      await ctrl.update(id, data);
+                    } else {
+                      final id = DateTime.now().millisecondsSinceEpoch.toString();
+                      final data = {
+                        'id': id,
+                        'category': _category,
+                        'name': _name.text,
+                        'userId': currentUserId,
+                        'status': 'vacant',
+                        'controlUnitId': _controlUnitId.text.isEmpty
+                            ? null
+                            : _controlUnitId.text,
+                        'mountingHeight': mountingHeight,
+                        'lidarNozzleDistance': lidarNozzleDistance,
+                        'ultrasonicDistance': ultrasonicDistance,
+                        'wheelDiameter': wheelDiameter,
+                        'screwsInWheel': screwsInWheel,
+                        'axleLength': axleLength,
+                        'hingeToAxle': hingeToAxle,
+                        'hingeToNozzle': hingeToNozzle,
+                        'hingeToControlUnit': hingeToControlUnit,
+                        'macAddress': macAddress,
+                        'linkedSprayerId': linkedSprayerId,
+                        'linkedTractorId': linkedTractorId,
+                      };
+                      await ctrl.add(data);
+                    }
+                    if (!mounted) return;
+                    Navigator.of(context).pop(true);
+                  } catch (e) {
+                    String userMessage;
+                    if (e is ApiException && e.body != null) {
+                      try {
+                        final parsed = json.decode(e.body!)
+                            as Map<String, dynamic>;
+                        final msgs = <String>[];
+                        parsed.forEach((k, v) {
+                          if (v is List && v.isNotEmpty) {
+                            msgs.add('${k}: ${v.first}');
+                          } else if (v is String) {
+                            msgs.add('${k}: $v');
+                          } else {
+                            msgs.add('$k: ${v.toString()}');
+                          }
+                        });
+                        userMessage = msgs.join(' • ');
+                      } catch (_) {
+                        userMessage = e.message;
+                      }
+                    } else {
+                      userMessage = e.toString();
+                    }
+
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(userMessage)),
+                    );
                   }
-                  if (!mounted) return;
-                  Navigator.of(context).pop();
                 },
                 child: const Text('Save'))
           ]),
