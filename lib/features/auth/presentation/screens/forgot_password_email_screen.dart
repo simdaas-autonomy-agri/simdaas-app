@@ -67,8 +67,8 @@ class _ForgotPasswordEmailScreenState
                           if (!mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                  content: Text(
-                                      'Verification code sent to email')));
+                                  content:
+                                      Text('Verification code sent to email')));
                           // Navigate to confirm screen with email
                           if (mounted) {
                             Navigator.of(context).pushNamed(
@@ -79,8 +79,8 @@ class _ForgotPasswordEmailScreenState
                           String msg;
                           if (e is ApiException && e.body != null) {
                             try {
-                              final parsed = json.decode(e.body!)
-                                  as Map<String, dynamic>;
+                              final parsed =
+                                  json.decode(e.body!) as Map<String, dynamic>;
                               final msgs = <String>[];
                               parsed.forEach((k, v) {
                                 if (v is List && v.isNotEmpty) {

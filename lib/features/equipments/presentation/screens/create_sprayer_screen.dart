@@ -105,7 +105,9 @@ class _CreateSprayerScreenState extends ConsumerState<CreateSprayerScreen> {
                         const InputDecoration(labelText: 'Wheel diameter (m)'),
                     keyboardType:
                         TextInputType.numberWithOptions(decimal: true),
-                    validator: (v) => (v == null || v.isEmpty) ? 'Enter wheel diameter' : null,
+                    validator: (v) => (v == null || v.isEmpty)
+                        ? 'Enter wheel diameter'
+                        : null,
                   ),
                   const SizedBox(height: 8),
                   TextFormField(
@@ -113,7 +115,9 @@ class _CreateSprayerScreenState extends ConsumerState<CreateSprayerScreen> {
                     decoration: const InputDecoration(
                         labelText: 'Number of screws in wheel'),
                     keyboardType: TextInputType.number,
-                    validator: (v) => (v == null || v.isEmpty) ? 'Enter number of screws' : null,
+                    validator: (v) => (v == null || v.isEmpty)
+                        ? 'Enter number of screws'
+                        : null,
                   ),
                   const SizedBox(height: 8),
                   TextFormField(
@@ -122,7 +126,8 @@ class _CreateSprayerScreenState extends ConsumerState<CreateSprayerScreen> {
                         const InputDecoration(labelText: 'Axle length (m)'),
                     keyboardType:
                         TextInputType.numberWithOptions(decimal: true),
-                    validator: (v) => (v == null || v.isEmpty) ? 'Enter axle length' : null,
+                    validator: (v) =>
+                        (v == null || v.isEmpty) ? 'Enter axle length' : null,
                   ),
                   const SizedBox(height: 8),
                   TextFormField(
@@ -130,7 +135,8 @@ class _CreateSprayerScreenState extends ConsumerState<CreateSprayerScreen> {
                     decoration:
                         const InputDecoration(labelText: 'Number of nozzles'),
                     keyboardType: TextInputType.number,
-                    validator: (v) => (v == null || v.isEmpty) ? 'Enter nozzle count' : null,
+                    validator: (v) =>
+                        (v == null || v.isEmpty) ? 'Enter nozzle count' : null,
                   ),
                   const SizedBox(height: 8),
                   TextFormField(
@@ -139,7 +145,8 @@ class _CreateSprayerScreenState extends ConsumerState<CreateSprayerScreen> {
                         const InputDecoration(labelText: 'Tank capacity (L)'),
                     keyboardType:
                         TextInputType.numberWithOptions(decimal: true),
-                    validator: (v) => (v == null || v.isEmpty) ? 'Enter tank capacity' : null,
+                    validator: (v) =>
+                        (v == null || v.isEmpty) ? 'Enter tank capacity' : null,
                   ),
                   const SizedBox(height: 8),
                   TextFormField(
@@ -148,7 +155,9 @@ class _CreateSprayerScreenState extends ConsumerState<CreateSprayerScreen> {
                         labelText: 'Distance between hinge point and axle (m)'),
                     keyboardType:
                         TextInputType.numberWithOptions(decimal: true),
-                    validator: (v) => (v == null || v.isEmpty) ? 'Enter hinge->axle distance' : null,
+                    validator: (v) => (v == null || v.isEmpty)
+                        ? 'Enter hinge->axle distance'
+                        : null,
                   ),
                   const SizedBox(height: 8),
                   TextFormField(
@@ -158,7 +167,9 @@ class _CreateSprayerScreenState extends ConsumerState<CreateSprayerScreen> {
                             'Distance between hinge point and nozzle (m)'),
                     keyboardType:
                         TextInputType.numberWithOptions(decimal: true),
-                    validator: (v) => (v == null || v.isEmpty) ? 'Enter hinge->nozzle distance' : null,
+                    validator: (v) => (v == null || v.isEmpty)
+                        ? 'Enter hinge->nozzle distance'
+                        : null,
                   ),
                   const SizedBox(height: 8),
                   TextFormField(
@@ -168,141 +179,142 @@ class _CreateSprayerScreenState extends ConsumerState<CreateSprayerScreen> {
                             'Distance between hinge point and control unit mounting (m)'),
                     keyboardType:
                         TextInputType.numberWithOptions(decimal: true),
-                    validator: (v) => (v == null || v.isEmpty) ? 'Enter hinge->control unit distance' : null,
+                    validator: (v) => (v == null || v.isEmpty)
+                        ? 'Enter hinge->control unit distance'
+                        : null,
                   ),
                   const SizedBox(height: 12),
                   ElevatedButton(
                     onPressed: () async {
-                        if (!_formKey.currentState!.validate()) return;
-                        final ctrl = ref.read(equipmentControllerProvider);
-                        final navigator = Navigator.of(context);
-                        double? wheelDiameter;
-                        int? screwsInWheel;
-                        double? hingeToAxle;
-                        double? hingeToNozzle;
-                        double? hingeToControlUnit;
-                        double? axleLength;
-                        int? nozzleCount;
-                        double? tankCapacity;
-                        try {
-                          wheelDiameter = double.tryParse(_wheelDiameter.text);
-                        } catch (_) {
-                          wheelDiameter = null;
-                        }
-                        try {
-                          screwsInWheel = int.tryParse(_screwsInWheel.text);
-                        } catch (_) {
-                          screwsInWheel = null;
-                        }
-                        try {
-                          hingeToAxle = double.tryParse(_hingeToAxle.text);
-                        } catch (_) {
-                          hingeToAxle = null;
-                        }
-                        try {
-                          hingeToNozzle = double.tryParse(_hingeToNozzle.text);
-                        } catch (_) {
-                          hingeToNozzle = null;
-                        }
-                        try {
-                          hingeToControlUnit =
-                              double.tryParse(_hingeToControlUnit.text);
-                        } catch (_) {
-                          hingeToControlUnit = null;
-                        }
+                      if (!_formKey.currentState!.validate()) return;
+                      final ctrl = ref.read(equipmentControllerProvider);
+                      final navigator = Navigator.of(context);
+                      double? wheelDiameter;
+                      int? screwsInWheel;
+                      double? hingeToAxle;
+                      double? hingeToNozzle;
+                      double? hingeToControlUnit;
+                      double? axleLength;
+                      int? nozzleCount;
+                      double? tankCapacity;
+                      try {
+                        wheelDiameter = double.tryParse(_wheelDiameter.text);
+                      } catch (_) {
+                        wheelDiameter = null;
+                      }
+                      try {
+                        screwsInWheel = int.tryParse(_screwsInWheel.text);
+                      } catch (_) {
+                        screwsInWheel = null;
+                      }
+                      try {
+                        hingeToAxle = double.tryParse(_hingeToAxle.text);
+                      } catch (_) {
+                        hingeToAxle = null;
+                      }
+                      try {
+                        hingeToNozzle = double.tryParse(_hingeToNozzle.text);
+                      } catch (_) {
+                        hingeToNozzle = null;
+                      }
+                      try {
+                        hingeToControlUnit =
+                            double.tryParse(_hingeToControlUnit.text);
+                      } catch (_) {
+                        hingeToControlUnit = null;
+                      }
 
-                        try {
-                          axleLength = double.tryParse(_axleLength.text);
-                        } catch (_) {
-                          axleLength = null;
-                        }
-                        try {
-                          nozzleCount = int.tryParse(_nozzleCount.text);
-                        } catch (_) {
-                          nozzleCount = null;
-                        }
-                        try {
-                          tankCapacity = double.tryParse(_tankCapacity.text);
-                        } catch (_) {
-                          tankCapacity = null;
-                        }
+                      try {
+                        axleLength = double.tryParse(_axleLength.text);
+                      } catch (_) {
+                        axleLength = null;
+                      }
+                      try {
+                        nozzleCount = int.tryParse(_nozzleCount.text);
+                      } catch (_) {
+                        nozzleCount = null;
+                      }
+                      try {
+                        tankCapacity = double.tryParse(_tankCapacity.text);
+                      } catch (_) {
+                        tankCapacity = null;
+                      }
 
-                        final currentUserId =
-                            ref.read(authServiceProvider).currentUserId;
-                        try {
-                          if (isEditing) {
-                            final id = widget.existingData!['id'] as String? ??
-                                DateTime.now()
-                                    .millisecondsSinceEpoch
-                                    .toString();
-                            final data = {
-                              'category': 'sprayer',
-                              'name': _name.text,
-                              'userId': currentUserId,
-                              'status': widget.existingData!['status'] as String? ??
-                                  'vacant',
-                              'wheelDiameter': wheelDiameter,
-                              'screwsInWheel': screwsInWheel,
-                              'hingeToAxle': hingeToAxle,
-                              'hingeToNozzle': hingeToNozzle,
-                              'hingeToControlUnit': hingeToControlUnit,
-                              'axleLength': axleLength,
-                              'nozzleCount': nozzleCount,
-                              'tankCapacity': tankCapacity,
-                            };
-                            await ctrl.update(id, data);
-                          } else {
-                            final id =
-                                DateTime.now().millisecondsSinceEpoch.toString();
-                            final data = {
-                              'id': id,
-                              'category': 'sprayer',
-                              'name': _name.text,
-                              'userId': currentUserId,
-                              'status': 'vacant',
-                              'wheelDiameter': wheelDiameter,
-                              'screwsInWheel': screwsInWheel,
-                              'hingeToAxle': hingeToAxle,
-                              'hingeToNozzle': hingeToNozzle,
-                              'hingeToControlUnit': hingeToControlUnit,
-                              'axleLength': axleLength,
-                              'nozzleCount': nozzleCount,
-                              'tankCapacity': tankCapacity,
-                            };
-                            await ctrl.add(data);
+                      final currentUserId =
+                          ref.read(authServiceProvider).currentUserId;
+                      try {
+                        if (isEditing) {
+                          final id = widget.existingData!['id'] as String? ??
+                              DateTime.now().millisecondsSinceEpoch.toString();
+                          final data = {
+                            'category': 'sprayer',
+                            'name': _name.text,
+                            'userId': currentUserId,
+                            'status':
+                                widget.existingData!['status'] as String? ??
+                                    'vacant',
+                            'wheelDiameter': wheelDiameter,
+                            'screwsInWheel': screwsInWheel,
+                            'hingeToAxle': hingeToAxle,
+                            'hingeToNozzle': hingeToNozzle,
+                            'hingeToControlUnit': hingeToControlUnit,
+                            'axleLength': axleLength,
+                            'nozzleCount': nozzleCount,
+                            'tankCapacity': tankCapacity,
+                          };
+                          await ctrl.update(id, data);
+                        } else {
+                          final id =
+                              DateTime.now().millisecondsSinceEpoch.toString();
+                          final data = {
+                            'id': id,
+                            'category': 'sprayer',
+                            'name': _name.text,
+                            'userId': currentUserId,
+                            'status': 'vacant',
+                            'wheelDiameter': wheelDiameter,
+                            'screwsInWheel': screwsInWheel,
+                            'hingeToAxle': hingeToAxle,
+                            'hingeToNozzle': hingeToNozzle,
+                            'hingeToControlUnit': hingeToControlUnit,
+                            'axleLength': axleLength,
+                            'nozzleCount': nozzleCount,
+                            'tankCapacity': tankCapacity,
+                          };
+                          await ctrl.add(data);
+                        }
+                        if (!mounted) return;
+                        navigator.pop(true);
+                      } catch (e) {
+                        String userMessage;
+                        if (e is ApiException && e.body != null) {
+                          try {
+                            final parsed =
+                                json.decode(e.body!) as Map<String, dynamic>;
+                            final msgs = <String>[];
+                            parsed.forEach((k, v) {
+                              if (v is List && v.isNotEmpty) {
+                                msgs.add('${k}: ${v.first}');
+                              } else if (v is String) {
+                                msgs.add('${k}: $v');
+                              } else {
+                                msgs.add('$k: ${v.toString()}');
+                              }
+                            });
+                            userMessage = msgs.join(' • ');
+                          } catch (_) {
+                            userMessage = e.message;
                           }
-                          if (!mounted) return;
-                          navigator.pop(true);
-                        } catch (e) {
-                          String userMessage;
-                          if (e is ApiException && e.body != null) {
-                            try {
-                              final parsed = json.decode(e.body!)
-                                  as Map<String, dynamic>;
-                              final msgs = <String>[];
-                              parsed.forEach((k, v) {
-                                if (v is List && v.isNotEmpty) {
-                                  msgs.add('${k}: ${v.first}');
-                                } else if (v is String) {
-                                  msgs.add('${k}: $v');
-                                } else {
-                                  msgs.add('$k: ${v.toString()}');
-                                }
-                              });
-                              userMessage = msgs.join(' • ');
-                            } catch (_) {
-                              userMessage = e.message;
-                            }
-                          } else {
-                            userMessage = e.toString();
-                          }
-
-                          if (!mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(userMessage)),
-                          );
+                        } else {
+                          userMessage = e.toString();
                         }
-                      },
+
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(userMessage)),
+                        );
+                      }
+                    },
                     child: const Padding(
                       padding: EdgeInsets.symmetric(
                           horizontal: 24.0, vertical: 12.0),

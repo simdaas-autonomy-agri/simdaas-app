@@ -120,7 +120,8 @@ class MyApp extends StatelessWidget {
         '/register': (ctx) => const RegisterScreen(),
         '/verify-email': (ctx) => const VerifyEmailScreen(),
         '/forgot-password': (ctx) => const ForgotPasswordEmailScreen(),
-        '/forgot-password-confirm': (ctx) => const ForgotPasswordConfirmScreen(),
+        '/forgot-password-confirm': (ctx) =>
+            const ForgotPasswordConfirmScreen(),
         '/profile': (ctx) => const ProfileScreen(),
       },
     );

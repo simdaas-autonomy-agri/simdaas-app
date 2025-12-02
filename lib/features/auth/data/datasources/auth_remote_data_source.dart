@@ -40,7 +40,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       return UserModel(id: id, email: email);
     }
     throw ApiException(resp.statusCode, 'HTTP ${resp.statusCode}',
-      path: '/api/auth/login/', body: resp.body);
+        path: '/api/auth/login/', body: resp.body);
   }
 
   @override

@@ -59,8 +59,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   labelText: 'Password',
                   helperText: 'Minimum 6 characters',
                   suffixIcon: IconButton(
-                    icon: Icon(_obscurePassword ? Icons.visibility : Icons.visibility_off),
-                    onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                    icon: Icon(_obscurePassword
+                        ? Icons.visibility
+                        : Icons.visibility_off),
+                    onPressed: () =>
+                        setState(() => _obscurePassword = !_obscurePassword),
                   ),
                 ),
                 obscureText: _obscurePassword,
@@ -77,8 +80,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 decoration: InputDecoration(
                     labelText: 'Confirm password',
                     suffixIcon: IconButton(
-                      icon: Icon(_obscureConfirm ? Icons.visibility : Icons.visibility_off),
-                      onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
+                      icon: Icon(_obscureConfirm
+                          ? Icons.visibility
+                          : Icons.visibility_off),
+                      onPressed: () =>
+                          setState(() => _obscureConfirm = !_obscureConfirm),
                     )),
                 obscureText: _obscureConfirm,
                 validator: (v) {

@@ -342,7 +342,8 @@ class AuthService extends ChangeNotifier {
         // If token did not contain a user_id claim, fall back to persisted user_data
         try {
           if ((_userId == null || _userId!.isEmpty) && _userData != null) {
-            final maybeId = _userData!['id'] ?? _userData!['pk'] ?? _userData!['user_id'];
+            final maybeId =
+                _userData!['id'] ?? _userData!['pk'] ?? _userData!['user_id'];
             if (maybeId != null) _userId = maybeId.toString();
           }
         } catch (_) {}

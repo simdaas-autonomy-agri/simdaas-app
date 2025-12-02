@@ -4,8 +4,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'ws_channel_stub.dart'
-  if (dart.library.io) 'ws_channel_io.dart'
-  if (dart.library.html) 'ws_channel_html.dart';
+    if (dart.library.io) 'ws_channel_io.dart'
+    if (dart.library.html) 'ws_channel_html.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../utils/mac_utils.dart';
 
@@ -83,9 +83,8 @@ class TelemetryData {
           // try parse as a floating numeric string first (e.g. "1763401570.0")
           final asNum = double.tryParse(s);
           if (asNum != null) {
-            final ms = asNum > 1000000000000
-                ? asNum.toInt()
-                : (asNum * 1000).toInt();
+            final ms =
+                asNum > 1000000000000 ? asNum.toInt() : (asNum * 1000).toInt();
             ts = DateTime.fromMillisecondsSinceEpoch(ms, isUtc: true);
           } else {
             // fallback to ISO date parsing; treat parsed instants as UTC
@@ -231,7 +230,8 @@ class TelemetryService {
             // remove latest telemetry and positional history
             _latest.remove(id);
             _positions.remove(id);
-            debugPrint('Telemetry.pruner: cleared stored telemetry for offline id $id');
+            debugPrint(
+                'Telemetry.pruner: cleared stored telemetry for offline id $id');
           }
         }
       } catch (_) {}
@@ -279,7 +279,8 @@ class TelemetryService {
               ? json.decode(message) as Map<String, dynamic>
               : (json.decode(utf8.decode(message)) as Map<String, dynamic>);
           try {
-            debugPrint('Telemetry raw message for $deviceId -> ${safeStringify(data)}');
+            debugPrint(
+                'Telemetry raw message for $deviceId -> ${safeStringify(data)}');
           } catch (_) {}
 
           // Some servers send an envelope where the actual telemetry JSON is
@@ -344,7 +345,8 @@ class TelemetryService {
             final now = DateTime.now().toUtc();
             final tsUtc = t.timestamp.toUtc();
             final ageSec = now.difference(tsUtc).inSeconds;
-            debugPrint('Telemetry.received on subscription=$normKey payload=$normId ts=${tsUtc.toIso8601String()} age=${ageSec}s');
+            debugPrint(
+                'Telemetry.received on subscription=$normKey payload=$normId ts=${tsUtc.toIso8601String()} age=${ageSec}s');
           } catch (_) {}
           if (normId.isEmpty) return;
           final stored = TelemetryData(
@@ -374,7 +376,8 @@ class TelemetryService {
           // Persist lat/lon history for this device if present
           try {
             if (stored.lat != null && stored.lon != null) {
-              final list = _positions.putIfAbsent(normId, () => <_LatLonEntry>[]);
+              final list =
+                  _positions.putIfAbsent(normId, () => <_LatLonEntry>[]);
               list.add(_LatLonEntry(
                   timestamp: stored.timestamp.toUtc(),
                   lat: stored.lat!,
@@ -413,7 +416,8 @@ class TelemetryService {
                 plot: stored.plot,
                 deviceInPlot: stored.deviceInPlot,
               );
-              debugPrint('Telemetry: stored telemetry for payload=$normId and subscription=$normKey');
+              debugPrint(
+                  'Telemetry: stored telemetry for payload=$normId and subscription=$normKey');
             }
           } catch (_) {}
           // publish live update for listeners and push current actives immediately
@@ -445,20 +449,25 @@ class TelemetryService {
         final attempts = (_reconnectAttempts[normKey] ?? 0) + 1;
         _reconnectAttempts[normKey] = attempts;
         const maxAttempts = 5;
-        if (_desiredSubscriptions.contains(normKey) && attempts <= maxAttempts) {
+        if (_desiredSubscriptions.contains(normKey) &&
+            attempts <= maxAttempts) {
           final delay = Duration(seconds: (1 << (attempts - 1)).clamp(1, 32));
-          debugPrint('Telemetry: scheduling reconnect for $normKey in ${delay.inSeconds}s (attempt $attempts)');
+          debugPrint(
+              'Telemetry: scheduling reconnect for $normKey in ${delay.inSeconds}s (attempt $attempts)');
           Timer(delay, () {
             // only attempt if still desired and not currently connected
-            if (_desiredSubscriptions.contains(normKey) && !_channels.containsKey(normKey)) {
+            if (_desiredSubscriptions.contains(normKey) &&
+                !_channels.containsKey(normKey)) {
               subscribe(normKey);
             }
           });
         } else {
           if (!_desiredSubscriptions.contains(normKey)) {
-            debugPrint('Telemetry: not reconnecting $normKey (no longer desired)');
+            debugPrint(
+                'Telemetry: not reconnecting $normKey (no longer desired)');
           } else {
-            debugPrint('Telemetry: max reconnect attempts reached for $normKey');
+            debugPrint(
+                'Telemetry: max reconnect attempts reached for $normKey');
           }
         }
       });
@@ -482,9 +491,9 @@ class TelemetryService {
   void subscribeToDevices(List<String> deviceIds) {
     debugPrint('Telemetry.subscribeToDevices called with: $deviceIds');
     final normIds = deviceIds
-      .map((d) => canonicalizeMac(d))
-      .where((d) => d.isNotEmpty)
-      .toSet();
+        .map((d) => canonicalizeMac(d))
+        .where((d) => d.isNotEmpty)
+        .toSet();
     // update desired subscriptions
     _desiredSubscriptions
       ..clear()
@@ -507,8 +516,10 @@ class TelemetryService {
   List<TelemetryData> getActiveDevices() {
     final now = DateTime.now().toUtc();
     return _latest.values
-      .where((v) => now.difference(v.timestamp.toUtc()).inSeconds <= _activeThresholdSeconds)
-      .toList();
+        .where((v) =>
+            now.difference(v.timestamp.toUtc()).inSeconds <=
+            _activeThresholdSeconds)
+        .toList();
   }
 
   /// Debug: list of currently subscribed (normalized) device ids
@@ -517,6 +528,7 @@ class TelemetryService {
   /// Debug: snapshot of latest telemetry map (deviceId -> TelemetryData)
   Map<String, TelemetryData> get latestTelemetry =>
       Map<String, TelemetryData>.from(_latest);
+
   /// Return a copy of the stored positions (lat/lon history) for [deviceId].
   List<Map<String, dynamic>> getPositions(String deviceId) {
     final norm = canonicalizeMac(deviceId);
@@ -535,7 +547,8 @@ class TelemetryService {
   /// Stream of live TelemetryData updates for a particular device id.
   Stream<TelemetryData> deviceTelemetryStream(String deviceId) {
     final norm = canonicalizeMac(deviceId);
-    return _updatesController.stream.where((t) => canonicalizeMac(t.deviceId) == norm);
+    return _updatesController.stream
+        .where((t) => canonicalizeMac(t.deviceId) == norm);
   }
 
   void dispose() {

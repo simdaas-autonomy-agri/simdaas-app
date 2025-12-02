@@ -67,8 +67,10 @@ class _LoginFormState extends ConsumerState<LoginForm> {
               prefixIcon: const Icon(Icons.lock_outline),
               hintText: 'Enter your password',
               suffixIcon: IconButton(
-                icon: Icon(_obscurePassword ? Icons.visibility : Icons.visibility_off),
-                onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                icon: Icon(
+                    _obscurePassword ? Icons.visibility : Icons.visibility_off),
+                onPressed: () =>
+                    setState(() => _obscurePassword = !_obscurePassword),
               ),
             ),
             obscureText: _obscurePassword,
@@ -109,26 +111,26 @@ class _LoginFormState extends ConsumerState<LoginForm> {
                     } else if (state is AsyncError) {
                       // navigate to plot list
                       final msg = extractErrorMessage(state.error);
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Row(
-                                children: [
-                                  const Icon(Icons.error_outline,
-                                      color: Colors.white),
-                                  const SizedBox(width: 12),
-                                  Expanded(child: Text('Login failed: $msg')),
-                                ],
-                              ),
-                              backgroundColor:
-                                  Theme.of(context).colorScheme.error,
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Row(
+                              children: [
+                                const Icon(Icons.error_outline,
+                                    color: Colors.white),
+                                const SizedBox(width: 12),
+                                Expanded(child: Text('Login failed: $msg')),
+                              ],
                             ),
-                          );
-                        }
+                            backgroundColor:
+                                Theme.of(context).colorScheme.error,
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        );
+                      }
                     }
                   },
                   child: const Padding(

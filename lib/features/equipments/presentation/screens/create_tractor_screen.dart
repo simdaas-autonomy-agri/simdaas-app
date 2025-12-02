@@ -85,7 +85,9 @@ class _CreateTractorScreenState extends ConsumerState<CreateTractorScreen> {
                         const InputDecoration(labelText: 'Wheel diameter (m)'),
                     keyboardType:
                         TextInputType.numberWithOptions(decimal: true),
-                    validator: (v) => (v == null || v.isEmpty) ? 'Enter wheel diameter' : null,
+                    validator: (v) => (v == null || v.isEmpty)
+                        ? 'Enter wheel diameter'
+                        : null,
                   ),
                   const SizedBox(height: 8),
                   TextFormField(
@@ -93,7 +95,9 @@ class _CreateTractorScreenState extends ConsumerState<CreateTractorScreen> {
                     decoration: const InputDecoration(
                         labelText: 'Number of screws in wheel'),
                     keyboardType: TextInputType.number,
-                    validator: (v) => (v == null || v.isEmpty) ? 'Enter number of screws' : null,
+                    validator: (v) => (v == null || v.isEmpty)
+                        ? 'Enter number of screws'
+                        : null,
                   ),
                   const SizedBox(height: 8),
                   TextFormField(
@@ -102,98 +106,100 @@ class _CreateTractorScreenState extends ConsumerState<CreateTractorScreen> {
                         const InputDecoration(labelText: 'Axle length (m)'),
                     keyboardType:
                         TextInputType.numberWithOptions(decimal: true),
-                    validator: (v) => (v == null || v.isEmpty) ? 'Enter axle length' : null,
+                    validator: (v) =>
+                        (v == null || v.isEmpty) ? 'Enter axle length' : null,
                   ),
                   const SizedBox(height: 24),
                   const SizedBox(height: 8),
                   ElevatedButton(
                     onPressed: () async {
-                        if (!_formKey.currentState!.validate()) return;
-                        final ctrl = ref.read(equipmentControllerProvider);
-                        final navigator = Navigator.of(context);
-                        double? wheelDiameter;
-                        int? screwsInWheel;
-                        double? axleLength;
-                        try {
-                          wheelDiameter = double.tryParse(_wheelDiameter.text);
-                        } catch (_) {
-                          wheelDiameter = null;
+                      if (!_formKey.currentState!.validate()) return;
+                      final ctrl = ref.read(equipmentControllerProvider);
+                      final navigator = Navigator.of(context);
+                      double? wheelDiameter;
+                      int? screwsInWheel;
+                      double? axleLength;
+                      try {
+                        wheelDiameter = double.tryParse(_wheelDiameter.text);
+                      } catch (_) {
+                        wheelDiameter = null;
+                      }
+                      try {
+                        screwsInWheel = int.tryParse(_screwsInWheel.text);
+                      } catch (_) {
+                        screwsInWheel = null;
+                      }
+                      try {
+                        axleLength = double.tryParse(_axleLength.text);
+                      } catch (_) {
+                        axleLength = null;
+                      }
+
+                      final currentUserId =
+                          ref.read(authServiceProvider).currentUserId;
+                      try {
+                        if (isEditing) {
+                          final id = widget.existingData!['id'] as String? ??
+                              DateTime.now().millisecondsSinceEpoch.toString();
+                          final data = {
+                            'category': 'tractor',
+                            'name': _name.text,
+                            'userId': currentUserId,
+                            'status':
+                                widget.existingData!['status'] as String? ??
+                                    'vacant',
+                            'wheelDiameter': wheelDiameter,
+                            'screwsInWheel': screwsInWheel,
+                            'axleLength': axleLength,
+                          };
+                          await ctrl.update(id, data);
+                        } else {
+                          final id =
+                              DateTime.now().millisecondsSinceEpoch.toString();
+                          final data = {
+                            'id': id,
+                            'category': 'tractor',
+                            'name': _name.text,
+                            'userId': currentUserId,
+                            'status': 'vacant',
+                            'wheelDiameter': wheelDiameter,
+                            'screwsInWheel': screwsInWheel,
+                            'axleLength': axleLength,
+                          };
+                          await ctrl.add(data);
                         }
-                        try {
-                          screwsInWheel = int.tryParse(_screwsInWheel.text);
-                        } catch (_) {
-                          screwsInWheel = null;
-                        }
-                        try {
-                          axleLength = double.tryParse(_axleLength.text);
-                        } catch (_) {
-                          axleLength = null;
+                        if (!mounted) return;
+                        navigator.pop(true);
+                      } catch (e) {
+                        String userMessage;
+                        if (e is ApiException && e.body != null) {
+                          try {
+                            final parsed =
+                                json.decode(e.body!) as Map<String, dynamic>;
+                            final msgs = <String>[];
+                            parsed.forEach((k, v) {
+                              if (v is List && v.isNotEmpty) {
+                                msgs.add('${k}: ${v.first}');
+                              } else if (v is String) {
+                                msgs.add('${k}: $v');
+                              } else {
+                                msgs.add('$k: ${v.toString()}');
+                              }
+                            });
+                            userMessage = msgs.join(' • ');
+                          } catch (_) {
+                            userMessage = e.message;
+                          }
+                        } else {
+                          userMessage = e.toString();
                         }
 
-                        final currentUserId =
-                            ref.read(authServiceProvider).currentUserId;
-                        try {
-                          if (isEditing) {
-                            final id = widget.existingData!['id'] as String? ??
-                                DateTime.now().millisecondsSinceEpoch.toString();
-                            final data = {
-                              'category': 'tractor',
-                              'name': _name.text,
-                              'userId': currentUserId,
-                              'status': widget.existingData!['status'] as String? ??
-                                  'vacant',
-                              'wheelDiameter': wheelDiameter,
-                              'screwsInWheel': screwsInWheel,
-                              'axleLength': axleLength,
-                            };
-                            await ctrl.update(id, data);
-                          } else {
-                            final id =
-                                DateTime.now().millisecondsSinceEpoch.toString();
-                            final data = {
-                              'id': id,
-                              'category': 'tractor',
-                              'name': _name.text,
-                              'userId': currentUserId,
-                              'status': 'vacant',
-                              'wheelDiameter': wheelDiameter,
-                              'screwsInWheel': screwsInWheel,
-                              'axleLength': axleLength,
-                            };
-                            await ctrl.add(data);
-                          }
-                          if (!mounted) return;
-                          navigator.pop(true);
-                        } catch (e) {
-                          String userMessage;
-                          if (e is ApiException && e.body != null) {
-                            try {
-                              final parsed = json.decode(e.body!)
-                                  as Map<String, dynamic>;
-                              final msgs = <String>[];
-                              parsed.forEach((k, v) {
-                                if (v is List && v.isNotEmpty) {
-                                  msgs.add('${k}: ${v.first}');
-                                } else if (v is String) {
-                                  msgs.add('${k}: $v');
-                                } else {
-                                  msgs.add('$k: ${v.toString()}');
-                                }
-                              });
-                              userMessage = msgs.join(' • ');
-                            } catch (_) {
-                              userMessage = e.message;
-                            }
-                          } else {
-                            userMessage = e.toString();
-                          }
-
-                          if (!mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(userMessage)),
-                          );
-                        }
-                      },
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(userMessage)),
+                        );
+                      }
+                    },
                     child: const Padding(
                       padding: EdgeInsets.symmetric(
                           horizontal: 24.0, vertical: 12.0),

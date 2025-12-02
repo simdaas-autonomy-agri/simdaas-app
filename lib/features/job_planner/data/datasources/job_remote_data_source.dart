@@ -122,13 +122,13 @@ class JobRemoteDataSourceImpl implements JobRemoteDataSource {
       }
       return out;
     } catch (e) {
-        // ignore: avoid_print
-        print(
+      // ignore: avoid_print
+      print(
           'Failed to parse jobs response (status=${lastResp.statusCode}). Body:\n${lastResp.body}');
-        // If we received a non-JSON response from the server, surface a
-        // structured ApiException so UI helpers can extract the server body.
-        throw ApiException(lastResp.statusCode,
-          'Failed to parse jobs response: ${e.toString()}',
+      // If we received a non-JSON response from the server, surface a
+      // structured ApiException so UI helpers can extract the server body.
+      throw ApiException(
+          lastResp.statusCode, 'Failed to parse jobs response: ${e.toString()}',
           path: '/jobs/api/', body: lastResp.body);
     }
   }

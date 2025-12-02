@@ -275,7 +275,8 @@ class PlotDetailsScreen extends ConsumerWidget {
                   Navigator.of(context).pushReplacement(MaterialPageRoute(
                       builder: (_) => PlotDetailsScreen(plot: updated)));
                 } catch (e) {
-                  showPolishedError(context, e, fallback: 'Error updating plot');
+                  showPolishedError(context, e,
+                      fallback: 'Error updating plot');
                 }
               }
             },
@@ -320,7 +321,8 @@ class PlotDetailsScreen extends ConsumerWidget {
                 }
               } catch (e) {
                 if (context.mounted) {
-                  showPolishedError(context, e, fallback: 'Error deleting plot');
+                  showPolishedError(context, e,
+                      fallback: 'Error deleting plot');
                 }
               }
             },

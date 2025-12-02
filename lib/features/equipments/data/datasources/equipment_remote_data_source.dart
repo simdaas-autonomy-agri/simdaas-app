@@ -354,9 +354,11 @@ class EquipmentRemoteDataSourceImpl implements EquipmentRemoteDataSource {
   @override
   Future<List<EquipmentEntity>> getControlUnits(String userId) async {
     try {
-      debugPrint('EquipmentRemoteDataSource: GET /api/control-units/ (userId=$userId)');
+      debugPrint(
+          'EquipmentRemoteDataSource: GET /api/control-units/ (userId=$userId)');
       final resp = await api.get('/api/control-units/');
-      debugPrint('EquipmentRemoteDataSource: /api/control-units/ status=${resp.statusCode} body_len=${resp.body.length}');
+      debugPrint(
+          'EquipmentRemoteDataSource: /api/control-units/ status=${resp.statusCode} body_len=${resp.body.length}');
       final List<EquipmentEntity> out = [];
       final arr = json.decode(resp.body) as List<dynamic>;
       for (final item in arr) {

@@ -266,8 +266,8 @@ class _CreateEquipmentScreenState extends ConsumerState<CreateEquipmentScreen> {
                         'category': _category,
                         'name': _name.text,
                         'userId': currentUserId,
-                        'status':
-                            widget.existingData!['status'] as String? ?? 'vacant',
+                        'status': widget.existingData!['status'] as String? ??
+                            'vacant',
                         'controlUnitId': _controlUnitId.text.isEmpty
                             ? null
                             : _controlUnitId.text,
@@ -286,7 +286,8 @@ class _CreateEquipmentScreenState extends ConsumerState<CreateEquipmentScreen> {
                       };
                       await ctrl.update(id, data);
                     } else {
-                      final id = DateTime.now().millisecondsSinceEpoch.toString();
+                      final id =
+                          DateTime.now().millisecondsSinceEpoch.toString();
                       final data = {
                         'id': id,
                         'category': _category,
@@ -317,8 +318,8 @@ class _CreateEquipmentScreenState extends ConsumerState<CreateEquipmentScreen> {
                     String userMessage;
                     if (e is ApiException && e.body != null) {
                       try {
-                        final parsed = json.decode(e.body!)
-                            as Map<String, dynamic>;
+                        final parsed =
+                            json.decode(e.body!) as Map<String, dynamic>;
                         final msgs = <String>[];
                         parsed.forEach((k, v) {
                           if (v is List && v.isNotEmpty) {

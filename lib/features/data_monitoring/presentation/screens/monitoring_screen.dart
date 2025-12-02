@@ -87,7 +87,8 @@ class _MonitoringScreenState extends ConsumerState<MonitoringScreen> {
   void dispose() {
     // Hide any visible snack before leaving the screen.
     try {
-      if (_outOfPlotSnackVisible) ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      if (_outOfPlotSnackVisible)
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
     } catch (_) {}
     _deviceSub?.cancel();
     super.dispose();
@@ -494,7 +495,9 @@ class _MonitoringScreenState extends ConsumerState<MonitoringScreen> {
   void _updateOutOfPlotSnack(TelemetryData? t) {
     if (!mounted) return;
     try {
-      final isInPlot = t != null && (t.deviceInPlot == true || (t.deviceInPlot?.toString().toLowerCase() == 'true'));
+      final isInPlot = t != null &&
+          (t.deviceInPlot == true ||
+              (t.deviceInPlot?.toString().toLowerCase() == 'true'));
       if (!isInPlot) {
         if (!_outOfPlotSnackVisible) {
           _outOfPlotSnackVisible = true;
@@ -503,12 +506,15 @@ class _MonitoringScreenState extends ConsumerState<MonitoringScreen> {
             duration: const Duration(days: 1),
             behavior: SnackBarBehavior.floating,
             backgroundColor: Colors.orange,
-            action: SnackBarAction(label: 'Dismiss', textColor: Colors.white, onPressed: () {
-              try {
-                ScaffoldMessenger.of(context).hideCurrentSnackBar();
-              } catch (_) {}
-              _outOfPlotSnackVisible = false;
-            }),
+            action: SnackBarAction(
+                label: 'Dismiss',
+                textColor: Colors.white,
+                onPressed: () {
+                  try {
+                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                  } catch (_) {}
+                  _outOfPlotSnackVisible = false;
+                }),
           ));
         }
       } else {

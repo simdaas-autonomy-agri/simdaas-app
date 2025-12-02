@@ -258,7 +258,8 @@ class _ControlUnitsListScreenState
         itemBuilder: (context, i) {
           final cu = widget.items[i];
           final linkedPlotId = (cu.linkedPlotId ?? '').toString();
-          final linkedPlotName = _extractPlotNameFromLinked(linkedPlotId, plotMap);
+          final linkedPlotName =
+              _extractPlotNameFromLinked(linkedPlotId, plotMap);
           return activeAsync.when(
             data: (activeList) {
               final deviceId = extractDeviceId(cu);
@@ -590,13 +591,16 @@ class _ControlUnitsListScreenState
         // Open create screen with scanned data
         await Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (_) => CreateControlUnitScreen(existingData: result, returnToAddPlot: returnToPlot),
+            builder: (_) => CreateControlUnitScreen(
+                existingData: result, returnToAddPlot: returnToPlot),
           ),
         );
       }
     } else if (choice == 'add') {
       // Navigate directly to create control unit screen
-      await Navigator.of(context).push(MaterialPageRoute(builder: (_) => CreateControlUnitScreen(returnToAddPlot: returnToPlot)));
+      await Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) =>
+              CreateControlUnitScreen(returnToAddPlot: returnToPlot)));
     }
     // If choice is null, user dismissed the sheet - do nothing
   }

@@ -245,7 +245,8 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                       },
                       loading: () =>
                           const Center(child: CircularProgressIndicator()),
-                      error: (e, st) => Center(child: Text(extractErrorMessage(e))),
+                      error: (e, st) =>
+                          Center(child: Text(extractErrorMessage(e))),
                     );
                   },
                   loading: () =>

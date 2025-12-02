@@ -6,7 +6,8 @@ String canonicalizeMac(String input) {
     // If it doesn't look like a MAC after stripping, fall back to trimmed lower
     return s;
   }
-  final parts = List<String>.generate(6, (i) => hex.substring(i * 2, i * 2 + 2));
+  final parts =
+      List<String>.generate(6, (i) => hex.substring(i * 2, i * 2 + 2));
   return parts.join(':');
 }
 
@@ -15,7 +16,14 @@ String extractDeviceId(dynamic cu) {
   // If it's a map-like object, try common keys
   try {
     if (cu is Map) {
-      final keys = ['mac', 'macAddress', 'mac_address', 'controlUnitId', 'control_unit_id', 'id'];
+      final keys = [
+        'mac',
+        'macAddress',
+        'mac_address',
+        'controlUnitId',
+        'control_unit_id',
+        'id'
+      ];
       for (final k in keys) {
         if (cu.containsKey(k) && cu[k] != null) {
           final v = cu[k].toString();
@@ -30,7 +38,14 @@ String extractDeviceId(dynamic cu) {
     final dyn = cu as dynamic;
     final m = dyn.toJson?.call();
     if (m is Map) {
-      final keys = ['mac', 'macAddress', 'mac_address', 'controlUnitId', 'control_unit_id', 'id'];
+      final keys = [
+        'mac',
+        'macAddress',
+        'mac_address',
+        'controlUnitId',
+        'control_unit_id',
+        'id'
+      ];
       for (final k in keys) {
         if (m.containsKey(k) && m[k] != null) {
           final v = m[k].toString();
@@ -53,9 +68,9 @@ String extractDeviceId(dynamic cu) {
         }
       } catch (_) {
         try {
-          final val2 = dyn
-              .toString()
-              .contains(name) ? dyn : null; // cheap check - ignore
+          final val2 = dyn.toString().contains(name)
+              ? dyn
+              : null; // cheap check - ignore
         } catch (_) {}
       }
     }

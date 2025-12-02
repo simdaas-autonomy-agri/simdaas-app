@@ -109,10 +109,10 @@ class ApiService {
             'ApiService.POST $path: Got 401, attempting token refresh...');
         final newToken = await onTokenExpired!();
         if (newToken != null) {
-            debugPrint(
-                'ApiService.POST $path: Token refreshed, retrying request');
-            setAuthToken(newToken);
-            final h2 = _withAuth(headers);
+          debugPrint(
+              'ApiService.POST $path: Token refreshed, retrying request');
+          setAuthToken(newToken);
+          final h2 = _withAuth(headers);
           final resp2 = await c.post(url(path), headers: h2, body: body);
           _ensureSuccess(resp2, path);
           return resp2;
@@ -171,10 +171,10 @@ class ApiService {
             'ApiService.PATCH $path: Got 401, attempting token refresh...');
         final newToken = await onTokenExpired!();
         if (newToken != null) {
-            debugPrint(
-                'ApiService.PATCH $path: Token refreshed, retrying request');
-            setAuthToken(newToken);
-            final h2 = _withAuth(headers);
+          debugPrint(
+              'ApiService.PATCH $path: Token refreshed, retrying request');
+          setAuthToken(newToken);
+          final h2 = _withAuth(headers);
           final resp2 = await c.patch(url(path), headers: h2, body: body);
           _ensureSuccess(resp2, path);
           return resp2;

@@ -10,7 +10,8 @@ import 'package:simdaas/core/services/api_exception.dart';
 class CreateControlUnitScreen extends ConsumerStatefulWidget {
   final Map<String, dynamic>? existingData;
   final bool returnToAddPlot;
-  const CreateControlUnitScreen({super.key, this.existingData, this.returnToAddPlot = false});
+  const CreateControlUnitScreen(
+      {super.key, this.existingData, this.returnToAddPlot = false});
 
   @override
   ConsumerState<CreateControlUnitScreen> createState() =>
@@ -211,14 +212,16 @@ class _CreateControlUnitScreenState
     try {
       final userId = ref.read(authServiceProvider).currentUserId ?? '';
       final cuAsync = ref.watch(controlUnitsProvider(userId));
-      cuAsync.maybeWhen(data: (items) {
-        _existingMacs = items
-            .where((e) => (e.macAddress ?? '').isNotEmpty)
-            .map((e) => e.macAddress!
-                .replaceAll(RegExp(r'[^A-Fa-f0-9]'), '')
-                .toLowerCase())
-            .toSet();
-      }, orElse: () {});
+      cuAsync.maybeWhen(
+          data: (items) {
+            _existingMacs = items
+                .where((e) => (e.macAddress ?? '').isNotEmpty)
+                .map((e) => e.macAddress!
+                    .replaceAll(RegExp(r'[^A-Fa-f0-9]'), '')
+                    .toLowerCase())
+                .toSet();
+          },
+          orElse: () {});
     } catch (_) {}
 
     return Scaffold(
@@ -264,15 +267,22 @@ class _CreateControlUnitScreenState
                     final val = v?.trim() ?? '';
                     if (val.isEmpty) return 'Enter MAC address';
                     // normalize: remove separators and lowercase
-                    final norm = val.replaceAll(RegExp(r'[^A-Fa-f0-9]'), '').toLowerCase();
+                    final norm = val
+                        .replaceAll(RegExp(r'[^A-Fa-f0-9]'), '')
+                        .toLowerCase();
                     if (norm.isEmpty) return 'Enter valid MAC address';
                     // when we have cached existing MACs, ensure uniqueness
                     if (_existingMacs.isNotEmpty) {
-                      final own = widget.existingData?['macAddress']?.toString().replaceAll(RegExp(r'[^A-Fa-f0-9]'), '').toLowerCase();
+                      final own = widget.existingData?['macAddress']
+                          ?.toString()
+                          .replaceAll(RegExp(r'[^A-Fa-f0-9]'), '')
+                          .toLowerCase();
                       for (final e in _existingMacs) {
-                        if (own != null && own == e && e == norm) continue; // ignore own
+                        if (own != null && own == e && e == norm)
+                          continue; // ignore own
                         if (e == norm) return 'MAC address already exists';
-                        if (e.contains(norm) || norm.contains(e)) return 'MAC address too similar to existing device';
+                        if (e.contains(norm) || norm.contains(e))
+                          return 'MAC address too similar to existing device';
                       }
                     }
                     return null;
@@ -283,7 +293,7 @@ class _CreateControlUnitScreenState
                 const SizedBox(height: 8),
                 Consumer(builder: (context, ref, _) {
                   final userId =
-                    ref.read(authServiceProvider).currentUserId ?? '';
+                      ref.read(authServiceProvider).currentUserId ?? '';
                   final eqAsync = ref.watch(sprayersProvider(userId));
                   return eqAsync.when(
                       data: (items) {
@@ -302,13 +312,14 @@ class _CreateControlUnitScreenState
                                 child: Text(
                                     '${e.name}${e.controlUnitId != null ? ' (${e.controlUnitId})' : ''}')))
                           ],
-                      onChanged: _prefilledLinkedSprayer
-                        ? null
-                        : (v) => setState(() => _linkedSprayerId = v),
-                      validator: (v) {
-                        if (v == null || v.isEmpty) return 'Select a linked sprayer';
-                        return null;
-                      },
+                          onChanged: _prefilledLinkedSprayer
+                              ? null
+                              : (v) => setState(() => _linkedSprayerId = v),
+                          validator: (v) {
+                            if (v == null || v.isEmpty)
+                              return 'Select a linked sprayer';
+                            return null;
+                          },
                           disabledHint: _prefilledLinkedSprayer &&
                                   _linkedSprayerId != null
                               ? () {
@@ -354,7 +365,8 @@ class _CreateControlUnitScreenState
                               ? null
                               : (v) => setState(() => _linkedTractorId = v),
                           validator: (v) {
-                            if (v == null || v.isEmpty) return 'Select a linked tractor';
+                            if (v == null || v.isEmpty)
+                              return 'Select a linked tractor';
                             return null;
                           },
                           disabledHint: _prefilledLinkedTractor &&
@@ -417,7 +429,8 @@ class _CreateControlUnitScreenState
                               ? null
                               : (v) => setState(() => _linkedPlotId = v),
                           validator: (v) {
-                            if (v == null || v.isEmpty) return 'Select a default plot';
+                            if (v == null || v.isEmpty)
+                              return 'Select a default plot';
                             return null;
                           },
                           disabledHint:
@@ -463,7 +476,8 @@ class _CreateControlUnitScreenState
                             }
                           });
                         },
-                  validator: (v) => (v == null || v.isEmpty) ? 'Select sensor type' : null,
+                  validator: (v) =>
+                      (v == null || v.isEmpty) ? 'Select sensor type' : null,
                   disabledHint: _prefilledSensorType
                       ? Text(_sensorType.toUpperCase())
                       : null,
@@ -473,10 +487,11 @@ class _CreateControlUnitScreenState
                   controller: _lidarNozzleDistance,
                   enabled: !_prefilledLidarNozzle,
                   decoration: const InputDecoration(
-                    labelText: 'Distance b/w sensor and nozzle center (m)'),
+                      labelText: 'Distance b/w sensor and nozzle center (m)'),
                   keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                  validator: (v) => (v == null || v.isEmpty) ? 'Enter distance' : null,
+                      const TextInputType.numberWithOptions(decimal: true),
+                  validator: (v) =>
+                      (v == null || v.isEmpty) ? 'Enter distance' : null,
                 ),
                 if (_sensorType == 'lidar') ...[
                   const SizedBox(height: 8),
@@ -548,16 +563,14 @@ class _CreateControlUnitScreenState
                           await ctrl.update(existingId, data);
                         } else {
                           // fallback to add if id not available
-                          final id = DateTime.now()
-                              .millisecondsSinceEpoch
-                              .toString();
+                          final id =
+                              DateTime.now().millisecondsSinceEpoch.toString();
                           data['id'] = id;
                           await ctrl.add(data);
                         }
                       } else {
-                        final id = DateTime.now()
-                            .millisecondsSinceEpoch
-                            .toString();
+                        final id =
+                            DateTime.now().millisecondsSinceEpoch.toString();
                         data['id'] = id;
                         await ctrl.add(data);
                       }
@@ -570,8 +583,8 @@ class _CreateControlUnitScreenState
                       String userMessage;
                       if (e is ApiException && e.body != null) {
                         try {
-                          final parsed = json.decode(e.body!)
-                              as Map<String, dynamic>;
+                          final parsed =
+                              json.decode(e.body!) as Map<String, dynamic>;
                           final msgs = <String>[];
                           parsed.forEach((k, v) {
                             if (v is List && v.isNotEmpty) {
